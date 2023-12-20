@@ -134,6 +134,11 @@ trait WriteLong
     fn write_long(&mut self, _value: i64) -> io::Result<()>;
 }
 
+trait WriteByte
+{
+    fn write_byte(&mut self, _value: i8) -> io::Result<()>;
+}
+
 
 trait ReadVarInt
 {
@@ -155,6 +160,10 @@ trait ReadLong
     fn read_long(&mut self) -> io::Result<i64>;
 }
 
+trait ReadByte
+{
+    fn read_byte(&mut self) -> io::Result<i8>;
+}
 
 
 impl ReadString for TcpStream
@@ -208,6 +217,16 @@ impl ReadLong for TcpStream
         let result = i64::from_le_bytes(read_buffer);
 
         Ok(result)
+    }
+}
+
+impl ReadByte for TcpStream
+{
+    fn read_byte(&mut self) -> io::Result<i8>
+    {
+        let mut read_buffer = [0; 1];
+        self.read_exact(&mut read_buffer)?;
+        Ok(read_buffer[0] as i8)
     }
 }
 
