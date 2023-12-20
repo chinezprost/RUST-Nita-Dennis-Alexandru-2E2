@@ -1,13 +1,25 @@
+use std::io::{self,  Write, Read};
 use std::error::Error;
 use std::net::TcpStream;
-use std::io::{self};
 
 fn main() -> Result<(), Box<dyn Error>>
 {
     
     let mut stream = TcpStream::connect("127.0.0.1:25565")?;
-    handshake_serverbound("127.0.01", 25565, 2)?;
+    //handshake_serverbound("127.0.01", 25565, 2)?;
+    stream.write_all(&handshake_serverbound("127.0.0.1", 25565, 1)?)?;
+    stream.flush();
+    stream.write_all(&status_serverbound()?)?;
+    stream.flush();
+    //TESTING
+    let mut read_bytes = [0; 1];
+    stream.read_exact(&mut read_bytes)?;
+    println!("has read");
     
+    //TESTING
+
+
+
     Ok(())
 }
 
@@ -21,7 +33,6 @@ fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<
     packet_to_be_sent.write_u16(_port)?; // PORT-ul
     packet_to_be_sent.write_varint(_state)?;
 
-
     for i in &packet_to_be_sent
     {
         print!("{} ", i);
@@ -29,6 +40,19 @@ fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<
     Ok(packet_to_be_sent.clone())
 
 }
+
+fn status_serverbound() -> io::Result<Vec<u8>>
+{
+    let mut packet_to_be_sent = Vec::new();
+
+    packet_to_be_sent.write_varint(0)?;
+
+    Ok(packet_to_be_sent)
+}
+
+
+
+
 //trait-uri
 trait WriteVarInt
 {

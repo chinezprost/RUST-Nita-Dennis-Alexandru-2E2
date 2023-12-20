@@ -1,10 +1,69 @@
-[00:21:22] [Server thread/INFO]: Stopping server
-[00:21:22] [Server thread/INFO]: Saving players
-[00:21:22] [Server thread/INFO]: Saving worlds
-[00:21:22] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[00:21:22] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[00:21:22] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[00:21:22] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
-[00:21:22] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[00:21:22] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[00:21:22] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+[00:37:57] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[00:37:57] [ServerMain/INFO]: Reloading ResourceManager: Default
+[00:37:58] [Worker-Main-22/INFO]: Loaded 7 recipes
+[00:37:58] [Worker-Main-22/INFO]: Loaded 1141 advancements
+[00:38:01] [Server thread/INFO]: Starting minecraft server version 1.18
+[00:38:01] [Server thread/INFO]: Loading properties
+[00:38:01] [Server thread/INFO]: Default game type: SURVIVAL
+[00:38:01] [Server thread/INFO]: Generating keypair
+[00:38:01] [Server console handler/ERROR]: Exception handling console input
+java.io.IOException: The handle is invalid
+	at java.io.FileInputStream.readBytes(Native Method) ~[?:?]
+	at java.io.FileInputStream.read(FileInputStream.java:293) ~[?:?]
+	at java.io.BufferedInputStream.read1(BufferedInputStream.java:311) ~[?:?]
+	at java.io.BufferedInputStream.implRead(BufferedInputStream.java:386) ~[?:?]
+	at java.io.BufferedInputStream.read(BufferedInputStream.java:365) ~[?:?]
+	at sun.nio.cs.StreamDecoder.readBytes(StreamDecoder.java:333) ~[?:?]
+	at sun.nio.cs.StreamDecoder.implRead(StreamDecoder.java:376) ~[?:?]
+	at sun.nio.cs.StreamDecoder.lockedRead(StreamDecoder.java:219) ~[?:?]
+	at sun.nio.cs.StreamDecoder.read(StreamDecoder.java:173) ~[?:?]
+	at java.io.InputStreamReader.read(InputStreamReader.java:189) ~[?:?]
+	at java.io.BufferedReader.fill(BufferedReader.java:161) ~[?:?]
+	at java.io.BufferedReader.implReadLine(BufferedReader.java:371) ~[?:?]
+	at java.io.BufferedReader.readLine(BufferedReader.java:348) ~[?:?]
+	at java.io.BufferedReader.readLine(BufferedReader.java:437) ~[?:?]
+	at acj$1.run(SourceFile:101) [server-1.18.jar:?]
+[00:38:01] [Server thread/INFO]: Starting Minecraft server on *:25565
+[00:38:01] [Server thread/INFO]: Using default channel type
+[00:38:01] [Server thread/INFO]: Preparing level "world"
+[00:38:01] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[00:38:02] [Worker-Main-17/INFO]: Preparing spawn area: 0%
+[00:38:02] [Worker-Main-25/INFO]: Preparing spawn area: 0%
+[00:38:02] [Worker-Main-26/INFO]: Preparing spawn area: 0%
+[00:38:05] [Worker-Main-27/INFO]: Preparing spawn area: 0%
+[00:38:05] [Worker-Main-26/INFO]: Preparing spawn area: 0%
+[00:38:05] [Worker-Main-26/INFO]: Preparing spawn area: 0%
+[00:38:05] [Worker-Main-27/INFO]: Preparing spawn area: 0%
+[00:38:05] [Worker-Main-19/INFO]: Preparing spawn area: 0%
+[00:38:06] [Worker-Main-25/INFO]: Preparing spawn area: 3%
+[00:38:06] [Worker-Main-25/INFO]: Preparing spawn area: 3%
+[00:38:06] [Worker-Main-23/INFO]: Preparing spawn area: 15%
+[00:38:07] [Worker-Main-29/INFO]: Preparing spawn area: 34%
+[00:38:07] [Worker-Main-21/INFO]: Preparing spawn area: 51%
+[00:38:08] [Worker-Main-20/INFO]: Preparing spawn area: 68%
+[00:38:08] [Worker-Main-23/INFO]: Preparing spawn area: 68%
+[00:38:09] [Worker-Main-26/INFO]: Preparing spawn area: 71%
+[00:38:09] [Worker-Main-19/INFO]: Preparing spawn area: 74%
+[00:38:10] [Worker-Main-19/INFO]: Preparing spawn area: 81%
+[00:38:10] [Worker-Main-23/INFO]: Preparing spawn area: 84%
+[00:38:11] [Worker-Main-23/INFO]: Preparing spawn area: 91%
+[00:38:11] [Worker-Main-27/INFO]: Preparing spawn area: 99%
+[00:38:11] [Server thread/INFO]: Time elapsed: 10018 ms
+[00:38:11] [Server thread/INFO]: Done (10.108s)! For help, type "help"
+[10:40:01] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 33896825ms or 677936 ticks behind
+[11:03:30] [Server thread/INFO]: [Server] s
+[11:06:56] [Server thread/INFO]: Stopping server
+[11:06:56] [Server thread/INFO]: Saving players
+[11:06:56] [Server thread/INFO]: Saving worlds
+[11:06:56] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[11:06:57] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[11:06:57] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
