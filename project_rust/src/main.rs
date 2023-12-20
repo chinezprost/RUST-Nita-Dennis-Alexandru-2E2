@@ -26,34 +26,71 @@ fn main() -> Result<(), Box<dyn Error>>
     //     }
     // );
 
-    let handshake_packet = handshake_serverbound("127.0.0.1", 25565, 1)?;
-    stream.write_varint(handshake_packet.len() as i32)?;
-    stream.write_all(&handshake_packet)?;
+    let next_state = 1;
 
     
-    stream.write_byte(0x01)?; // REQUEST STATUS
-    stream.write_byte(0x00)?;
+    if next_state == 2
+    {
+        let handshake_packet_state_1 = handshake_serverbound("127.0.0.1", 25565, 1)?;
+
+        stream.write_varint(handshake_packet_state_1.len() as i32)?;
+        stream.write_all(&handshake_packet_state_1)?;
 
 
-    let size = stream.read_varint()?;
-    let packet_id = stream.read_varint()?;
-    let read_json = stream.read_string()?;
-
-    println!("{} {} {}", size, packet_id, read_json);
-
-    stream.write_byte(0x09)?;
-    stream.write_byte(0x01)?;
-    stream.write_long(111)?;
-
-    let size = stream.read_varint()?;
-    let packed_id = stream.read_byte()?;
-    let response = stream.read_long()?;
-
-    println!("{} {} {}", size, packed_id, response);
+        stream.write_byte(0x01)?; // REQUEST STATUS
+        stream.write_byte(0x00)?;
 
 
+        let size = stream.read_varint()?;
+        let packet_id = stream.read_varint()?;
+        let read_json = stream.read_string()?;
+
+        println!("{} {} {}", size, packet_id, read_json);
+
+        stream.write_byte(0x09)?;
+        stream.write_byte(0x01)?;
+        stream.write_long(111)?;
+
+        let size = stream.read_varint()?;
+        let packed_id = stream.read_byte()?;
+        let response = stream.read_long()?;
+
+        println!("{} {} {}", size, packed_id, response);
+        println!("end status");
+    }
+    else 
+    {
+        let handshake_packet_state_2 = handshake_serverbound("127.0.0.1", 25565, 2)?;
+
+        stream.write_varint(handshake_packet_state_2.len() as i32)?;
+        stream.write_all(&handshake_packet_state_2)?;
+        
+
+        let login_start = login_start_serverbound("dennis")?;
+        stream.write_varint(login_start.len() as i32)?;
+        stream.write_all(&login_start)?;
+
+        // stream.write_byte(0x17)?;
+        // stream.write_byte(0x00)?;
+        // stream.write_string("dennis", 16)?;
+
+        //skip set-compression
+        stream.read_varint()?;
+        stream.read_byte()?;
+        stream.read_varint()?;
+
+        let packet_size = stream.read_varint()?;
+        let packed_id = stream.read_byte()?;
+        let received_uuid = stream.read_long()?;
+
+        println!("{} {} {}", packet_size, packed_id, received_uuid);
+        let received_username = stream.read_string()?;
 
 
+        println!("{} {} {} {}", packet_size, packed_id, received_uuid, received_username);
+
+
+    }
     loop{}
 
 
@@ -94,6 +131,8 @@ fn receive_message(mut stream: TcpStream) -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+
+
 fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<Vec<u8>>
 {
     let mut formed_packet = Vec::new();
@@ -110,17 +149,14 @@ fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<
 fn login_start_serverbound(_username: &str) -> io::Result<Vec<u8>>
 {
     let mut formed_packet = Vec::new();
-
-    formed_packet.write_string(_username, _username.len() as u32)?;
-
-    let mut final_packet: Vec<u8> = Vec::new();
-    final_packet.push(formed_packet.len() as u8);
-    for octet in formed_packet
+    if _username.len() > 16 || _username.len() == 0
     {
-        final_packet.push(octet);
+        println!("Invalid username.");
     }
+    formed_packet.write_byte(0x00)?;
+    formed_packet.write_string(_username, 16)?;
 
-    Ok(final_packet)
+    Ok(formed_packet)
 }
 
 
@@ -201,6 +237,17 @@ trait ReadUUID
     fn read_uuid(&mut self) -> io::Result<i128>;
 }
 
+impl ReadUUID for TcpStream
+{
+    fn read_uuid(&mut self) -> io::Result<i128>
+    {
+        let mut read_buffer = [0; 16];
+        self.read_exact(&mut read_buffer)?;
+        Ok(i128::from_le_bytes(read_buffer))
+
+    }
+
+}
 
 trait ReadJSONString
 {
@@ -479,7 +526,8 @@ impl ReadLong for TcpStream
     {
         let mut read_buffer = [0; 8];
         self.read_exact(&mut read_buffer)?;
-        Ok(read_buffer[0] as i64)
+        
+        Ok(i64::from_be_bytes(read_buffer))
     }
 }
 
@@ -490,7 +538,7 @@ impl ReadJSONString for TcpStream
 {
     fn read_json_string(&mut self, _length: usize) -> io::Result<String> 
     {
-        let mut read_buffer = vec![0; _length/2];
+        let mut read_buffer = vec![0; 8];
         let _ = self.read_exact(&mut read_buffer);
         let result = String::from_utf8(read_buffer);
         Ok(result.unwrap())
