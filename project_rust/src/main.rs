@@ -22,16 +22,14 @@ fn main() -> Result<(), Box<dyn Error>>
     // );
 
     stream.write_all(&handshake_serverbound("127.0.0.1", 25565, 1)?)?;
-    stream.flush()?;
     stream.write_all(&[0x01, 0x00])?;
-    stream.flush()?;
 
-    let response1 = stream.read_varint()?;
-    let response2 = stream.read_varint()?;
-    let response3 = stream.read_varint()?;
-    let response4 = stream.read_string()?;
+    let length = stream.read_varint()?;
+    let packedid = stream.read_varint()?;
+    let length2 = stream.read_varint()?;
+    let json_string = stream.read_string()?;
 
-    println!("string: {} {} {} {}", response1, response2, response3, response4);
+    println!("string: {} {} {} {}", length, packedid, length2, json_string);
 
 
     stream.write_all(&login_start_serverbound("dennis")?)?;
@@ -131,6 +129,10 @@ trait WriteU16
     fn write_u16(&mut self, _value: u16) -> io::Result<()>;
 }
 
+trait WriteLong
+{
+    fn write_long(&mut self, _value: i64) -> io::Result<()>;
+}
 
 
 trait ReadVarInt
@@ -140,13 +142,20 @@ trait ReadVarInt
 
 trait ReadU16
 {
-    fn read_u16(&mut self) -> io::Result<i32>;
+    fn read_u16(&mut self) -> io::Result<u16>;
 }
 
 trait ReadString
 {
     fn read_string(&mut self) -> io::Result<String>;
 }
+
+trait ReadLong
+{
+    fn read_long(&mut self) -> io::Result<i64>;
+}
+
+
 
 impl ReadString for TcpStream
 {
@@ -185,6 +194,18 @@ impl ReadVarInt for TcpStream
 
             shift_pos = shift_pos + 7;
         }
+
+        Ok(result)
+    }
+}
+
+impl ReadLong for TcpStream
+{
+    fn read_long(&mut self) -> io::Result<i64>
+    {
+        let mut read_buffer = [0; 8];
+        self.read_exact(&mut read_buffer)?;
+        let result = i64::from_le_bytes(read_buffer);
 
         Ok(result)
     }
@@ -231,6 +252,15 @@ impl WriteString for Vec<u8>
 impl WriteU16 for Vec<u8>
 {
     fn write_u16(&mut self, _value: u16) -> io::Result<()>
+    {
+        self.extend_from_slice(&_value.to_le_bytes());
+        Ok(())
+    }
+}
+
+impl WriteLong for Vec<u8>
+{
+    fn write_long(&mut self, _value: i64) -> io::Result<()>
     {
         self.extend_from_slice(&_value.to_le_bytes());
         Ok(())
