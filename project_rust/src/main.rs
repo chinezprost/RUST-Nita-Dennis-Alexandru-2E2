@@ -1,13 +1,14 @@
 use std::io::{self,  Write, Read};
 use std::error::Error;
 use std::net::TcpStream;
+use std::thread;
 
 fn main() -> Result<(), Box<dyn Error>>
 {
     
     let mut stream = TcpStream::connect("127.0.0.1:25565")?;
     //handshake_serverbound("127.0.01", 25565, 2)?;
-    stream.write_all(&handshake_serverbound("127.0.0.1", 25565, 1)?)?;
+    stream.write_all(&handshake_serverbound("127.0.0.1", 25565, 2)?)?;
     stream.flush();
     stream.write_all(&status_serverbound()?)?;
     stream.flush();
@@ -18,7 +19,50 @@ fn main() -> Result<(), Box<dyn Error>>
     
     //TESTING
 
+    let listen_to_server_thread = thread::spawn
+    (
+        ||
+        {
+            if let Err(e) = receive_message(stream)
+            {
+                eprintln!("Couldn't receive message: {}.", e);
+            }
+        }
+    );
 
+
+    Ok(())
+}
+
+
+fn receive_message(mut stream: TcpStream) -> Result<(), Box<dyn Error>>
+{
+    let mut buffer = [0; 1];
+    loop
+    {
+        match stream.read(&mut buffer)
+        {
+            Ok(bytes_read) if bytes_read > 0
+                =>
+                {
+                    let message = String::from_utf8_lossy(&buffer[..bytes_read]);
+                    println!("I've received: {}", message);
+                }
+            
+            Ok(_)
+                =>
+                {
+                    println!("Connection lost.");
+                }
+
+            Err(e)
+                =>
+                {
+                    eprintln!("Error: {}", e);
+                    break;
+                }
+        }
+    }
 
     Ok(())
 }
@@ -28,7 +72,7 @@ fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<
     let mut packet_to_be_sent = Vec::new();
 
     packet_to_be_sent.write_varint(0)?; // PacketID-ul
-    packet_to_be_sent.write_varint(765)?; // Protocolul pentru 1.18
+    packet_to_be_sent.write_varint(757)?; // Protocolul pentru 1.18
     packet_to_be_sent.write_string(_address)?; // Protocolul pentru 1.18
     packet_to_be_sent.write_u16(_port)?; // PORT-ul
     packet_to_be_sent.write_varint(_state)?;
