@@ -89,6 +89,10 @@ fn main() -> Result<(), Box<dyn Error>>
 
         println!("{} {} {} {}", packet_size, packed_id, received_uuid, received_username);
 
+        //acknowledge the connection
+        stream.write_varint(1)?;
+        stream.write_byte(0x03)?;
+
 
     }
     loop{}
