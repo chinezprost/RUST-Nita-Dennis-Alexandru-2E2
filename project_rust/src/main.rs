@@ -1,43 +1,51 @@
 use std::io::{self,  Write, Read};
-use std::error::Error;
 use std::net::TcpStream;
 use std::thread;
+use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>>
 {
     
     let mut stream = TcpStream::connect("127.0.0.1:25565")?;
     //handshake_serverbound("127.0.01", 25565, 2)?;
-    stream.write_all(&handshake_serverbound("127.0.0.1", 25565, 2)?)?;
-    stream.flush();
-    stream.write_all(&status_serverbound()?)?;
-    stream.flush();
-    //TESTING
-    let mut read_bytes = [0; 1];
-    stream.read_exact(&mut read_bytes)?;
-    println!("has read");
-    
-    //TESTING
 
-    let listen_to_server_thread = thread::spawn
-    (
-        ||
-        {
-            if let Err(e) = receive_message(stream)
-            {
-                eprintln!("Couldn't receive message: {}.", e);
-            }
-        }
-    );
+    let stream_cloned = stream.try_clone()?;
+    // let listen_to_server_thread = thread::spawn
+    // (
+    //     ||
+    //     {
+    //         if let Err(e) = receive_message(stream_cloned)
+    //         {
+    //             eprintln!("Couldn't receive message: {}.", e);
+    //         }
+    //     }
+    // );
+
+    stream.write_all(&handshake_serverbound("127.0.0.1", 25565, 1)?)?;
+    stream.flush()?;
+    stream.write_all(&[0x01, 0x00])?;
+    stream.flush()?;
+
+    let response1 = stream.read_varint()?;
+    let response2 = stream.read_varint()?;
+    let response3 = stream.read_varint()?;
+    let response4 = stream.read_string()?;
+
+    println!("string: {} {} {} {}", response1, response2, response3, response4);
 
 
+    stream.write_all(&login_start_serverbound("dennis")?)?;
+    stream.flush()?;
+
+
+    // listen_to_server_thread.join().unwrap();
     Ok(())
 }
 
 
 fn receive_message(mut stream: TcpStream) -> Result<(), Box<dyn Error>>
 {
-    let mut buffer = [0; 1];
+    let mut buffer = [0; 1024];
     loop
     {
         match stream.read(&mut buffer)
@@ -69,19 +77,22 @@ fn receive_message(mut stream: TcpStream) -> Result<(), Box<dyn Error>>
 
 fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<Vec<u8>>
 {
-    let mut packet_to_be_sent = Vec::new();
+    let mut formed_packet = Vec::new();
 
-    packet_to_be_sent.write_varint(0)?; // PacketID-ul
-    packet_to_be_sent.write_varint(757)?; // Protocolul pentru 1.18
-    packet_to_be_sent.write_string(_address)?; // Protocolul pentru 1.18
-    packet_to_be_sent.write_u16(_port)?; // PORT-ul
-    packet_to_be_sent.write_varint(_state)?;
+    formed_packet.write_varint(0)?; // PacketID-ul
+    formed_packet.write_varint(757)?; // Protocolul pentru 1.18
+    formed_packet.write_string(_address, 255)?; // Adresa la care ma conectez // 127.0.0.1 (folosita si pt mc.minecraft-romania.ro:25565 de ex)
+    formed_packet.write_u16(_port)?; // PORT-ul
+    formed_packet.write_varint(_state)?;
 
-    for i in &packet_to_be_sent
+    let mut final_packet: Vec<u8> = Vec::new();
+    final_packet.push(formed_packet.len() as u8);
+    for octet in formed_packet
     {
-        print!("{} ", i);
+        final_packet.push(octet);
     }
-    Ok(packet_to_be_sent.clone())
+
+    Ok(final_packet)
 
 }
 
@@ -95,7 +106,14 @@ fn status_serverbound() -> io::Result<Vec<u8>>
 }
 
 
+fn login_start_serverbound(_username: &str) -> io::Result<Vec<u8>>
+{
+    let mut packet_to_be_sent = Vec::new();
+    packet_to_be_sent.write_string(_username, 16)?;
+    
 
+    Ok(packet_to_be_sent)
+}
 
 //trait-uri
 trait WriteVarInt
@@ -105,12 +123,71 @@ trait WriteVarInt
 
 trait WriteString
 {
-    fn write_string(&mut self, _value: &str) -> io::Result<()>;
+    fn write_string(&mut self, _value: &str, _size: u32) -> io::Result<()>;
 }
 
 trait WriteU16
 {
     fn write_u16(&mut self, _value: u16) -> io::Result<()>;
+}
+
+
+
+trait ReadVarInt
+{
+    fn read_varint(&mut self) -> io::Result<i32>;
+}
+
+trait ReadU16
+{
+    fn read_u16(&mut self) -> io::Result<i32>;
+}
+
+trait ReadString
+{
+    fn read_string(&mut self) -> io::Result<String>;
+}
+
+impl ReadString for TcpStream
+{
+    fn read_string(&mut self) -> io::Result<String> 
+    {
+        let size_to_be_read = self.read_varint()? as usize;
+        let mut read_buffer = vec![0; size_to_be_read];
+
+        let _ = self.read_exact(&mut read_buffer);
+
+        let result = String::from_utf8(read_buffer);
+
+        Ok(result.unwrap())
+    }
+}
+
+impl ReadVarInt for TcpStream
+{
+    fn read_varint(&mut self) -> io::Result<i32>
+    {
+        let mut shift_pos = 0;
+        let mut result = 0;
+
+        loop
+        {
+            let mut octet = [0];
+            self.read_exact(&mut octet)?;
+
+            let octet = octet[0] as i32;
+            result = (result | 0b0111_1111) << shift_pos;
+
+            if(octet & 0b1000_0000) == 0
+            {
+                break;
+            }
+
+            shift_pos = shift_pos + 7;
+        }
+
+        Ok(result)
+    }
 }
 
 //implementari
@@ -139,9 +216,13 @@ impl WriteVarInt for Vec<u8>
 
 impl WriteString for Vec<u8>
 {
-    fn write_string(&mut self, _value: &str) -> io::Result<()>
+    fn write_string(&mut self, _value: &str, _size: u32) -> io::Result<()>
     {
-        self.write_varint(_value.len() as i32)?;
+        if _value.len() > _size as usize
+        {
+            println!("Write string failure.");
+        }
+        self.write_varint(_size as i32)?;
         self.extend_from_slice(_value.as_bytes());
         Ok(())
     }
