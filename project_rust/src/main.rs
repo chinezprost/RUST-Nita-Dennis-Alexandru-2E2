@@ -25,11 +25,14 @@ fn main() -> Result<(), Box<dyn Error>>
     stream.write_all(&handshake_serverbound("127.0.0.1", 25565, 1)?)?;
     stream.write_byte(1)?; // REQUEST STATUS
     stream.write_byte(0x00)?;
-
     let length = stream.read_varint()?; // STATUS RESPONSE
+    
     let packedid = stream.read_varint()?;
     let length2 = stream.read_varint()?;
+    println!("{}", length2);
+
     let json_string = stream.read_json_string(length2 as usize)?;
+
 
     stream.write_byte(9)?;
     stream.write_byte(0x01)?;    
@@ -42,10 +45,13 @@ fn main() -> Result<(), Box<dyn Error>>
 
     println!("STATUS: response: packedlenght: {} packetid: {} jsonlength: {} json_string: {}", length, packedid, length2, json_string);
     println!("PING: ping_size: {} ping_pack_id: {} ping_recv_long: {}", ping_request_size, packed_id, ping_received_long);
+    stream.write_all(&login_start_serverbound("dennis")?)?;
+    // let user_uuid = stream.read_uuid()?;
+    // let username_test = stream.read_string()?;
+
+    // println!("Username: {}, UUID: {}", username_test, user_uuid);
 
     loop{}
-    stream.write_all(&login_start_serverbound("dennis")?)?;
-    stream.flush()?;
 
 
     // listen_to_server_thread.join().unwrap();
@@ -106,24 +112,22 @@ fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<
 
 }
 
-fn status_serverbound() -> io::Result<Vec<u8>>
-{
-    let mut packet_to_be_sent = Vec::new();
-
-    packet_to_be_sent.write_varint(0)?;
-
-    Ok(packet_to_be_sent)
-}
-
-
 fn login_start_serverbound(_username: &str) -> io::Result<Vec<u8>>
 {
-    let mut packet_to_be_sent = Vec::new();
-    packet_to_be_sent.write_string(_username, 16)?;
-    
+    let mut formed_packet = Vec::new();
 
-    Ok(packet_to_be_sent)
+    formed_packet.write_string(_username, _username.len() as u32)?;
+
+    let mut final_packet: Vec<u8> = Vec::new();
+    final_packet.push(formed_packet.len() as u8);
+    for octet in formed_packet
+    {
+        final_packet.push(octet);
+    }
+
+    Ok(final_packet)
 }
+
 
 //trait-uri
 trait WriteVarInt
@@ -149,6 +153,10 @@ trait WriteLong
 trait WriteByte
 {
     fn write_byte(&mut self, _value: i8) -> io::Result<()>;
+}
+
+trait WriteUUID{
+    fn write_uuid(&mut self, _value: i128) -> io::Result<()>;
 }
 
 
@@ -183,6 +191,10 @@ trait ReadJSONString
     fn read_json_string(&mut self, _length: usize) -> io::Result<String>;
 }
 
+trait ReadUUID
+{
+    fn read_uuid(&mut self) -> io::Result<i128>;
+}
 
 impl ReadString for TcpStream
 {
@@ -203,60 +215,37 @@ impl ReadJSONString for TcpStream
 {
     fn read_json_string(&mut self, _length: usize) -> io::Result<String> 
     {
-        let mut read_buffer = vec![0; _length-3];
+        let mut read_buffer = vec![0; _length];
         let _ = self.read_exact(&mut read_buffer);
         let result = String::from_utf8(read_buffer);
         Ok(result.unwrap())
     }
 }
 
-// impl ReadVarInt for TcpStream
-// {
-//     fn read_varint(&mut self) -> io::Result<i32>
-//     {
-//         let mut shift_pos = 0;
-//         let mut result = 0;
-
-//         loop
-//         {
-//             let mut octet = [0];
-//             self.read_exact(&mut octet)?;
-
-//             let octet = octet[0] as i32;
-//             result = (result | 0b0111_1111) << shift_pos;
-
-//             if(octet & 0b1000_0000) == 0
-//             {
-//                 break;
-//             }
-
-//             shift_pos = shift_pos + 7;
-//         }
-
-//         Ok(result)
-//     }
-// }
-
 impl ReadVarInt for TcpStream
 {
     fn read_varint(&mut self) -> io::Result<i32>
     {
         let mut value: i32 = 0;
-        let mut position = 0;
-        let mut currentOctet: i8;
+        let mut position: i32 = 0;
+        let mut current_octet: i32;
 
         loop
         {
-            currentOctet = self.read_byte()?;
-            value |= (currentOctet as i32 & 0x7F) << position;
+            current_octet = self.read_byte()? as i32;
+            value |= (0x7F & current_octet) << position;
 
-            if (currentOctet as i32 & 0x80) == 0
+            if (current_octet as u8 & 0x80) == 0
             {
                 break;
             }
 
             position += 7;
         }
+        if position >= 32
+        {
+            println!("VarInt too big!");
+        } 
 
         Ok(value)
     }
@@ -269,21 +258,54 @@ impl ReadLong for TcpStream
     fn read_long(&mut self) -> io::Result<i64>
     {
         let mut value: i64 = 0;
-        let mut position = 0;
-        let mut currentOctet: i8;
+        let mut position: i64 = 0;
+        let mut current_octet: i64;
 
         loop
         {
-            currentOctet = self.read_byte()?;
-            value |= (currentOctet as i64 & 0x7F) << position;
+            current_octet = self.read_byte()? as i64;
+            value |= (0x7F & current_octet) << position;
 
-            if (currentOctet as i64 & 0x80) == 0
+            if (current_octet as u8 & 0x80) == 0
             {
                 break;
             }
 
             position += 7;
         }
+        if position >= 32
+        {
+            println!("VarInt too big!");
+        } 
+
+        Ok(value)
+    }
+}
+
+impl ReadUUID for TcpStream
+{
+    fn read_uuid(&mut self) -> io::Result<i128>
+    {
+        let mut value: i128 = 0;
+        let mut position: i128 = 0;
+        let mut current_octet: i128;
+
+        loop
+        {
+            current_octet = self.read_byte()? as i128;
+            value |= (0x7F & current_octet) << position;
+
+            if (current_octet as u8 & 0x80) == 0
+            {
+                break;
+            }
+
+            position += 7;
+        }
+        if position >= 32
+        {
+            println!("VarInt too big!");
+        } 
 
         Ok(value)
     }
@@ -365,6 +387,15 @@ impl WriteByte for Vec<u8>
     }
 }
 
+impl WriteUUID for Vec<u8>
+{
+    fn write_uuid(&mut self, _value: i128) -> io::Result<()> 
+    {
+        self.extend_from_slice(&_value.to_le_bytes());
+        Ok(())
+    }
+}
+
 
 //for tcpstream
 impl WriteVarInt for TcpStream
@@ -439,3 +470,16 @@ impl WriteByte for TcpStream
         Ok(())
     }
 }
+
+impl WriteUUID for TcpStream
+{
+    fn write_uuid(&mut self, _value: i128) -> io::Result<()> 
+    {
+        let mut result = Vec::new();
+        result.extend_from_slice(&_value.to_le_bytes());
+        self.write_all(&result)?;
+        Ok(())
+    }
+}
+
+
