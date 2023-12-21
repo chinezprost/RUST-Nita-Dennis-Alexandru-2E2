@@ -1,9 +1,12 @@
 use core::time;
 use std::io::{self,  Write, Read};
 use std::net::TcpStream;
+use std::result;
 use std::thread::{self};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::error::Error;
+
+use flate2::read::ZlibDecoder;
 
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
@@ -12,24 +15,12 @@ fn main() -> Result<(), Box<dyn Error>>
 {
     
     let mut stream = TcpStream::connect("127.0.0.1:25565")?;
-    //handshake_serverbound("127.0.01", 25565, 2)?;
+    // handshake_serverbound("127.0.01", 25565, 2)?;
 
-    //let stream_cloned = stream.try_clone()?;
-    // let listen_to_server_thread = thread::spawn
-    // (
-    //     ||
-    //     {
-    //         if let Err(e) = receive_message(stream_cloned)
-    //         {
-    //             eprintln!("Couldn't receive message: {}.", e);
-    //         }
-    //     }
-    // );
-
-    let next_state = 1;
+    let next_state = 2;
 
     
-    if next_state == 2
+    if next_state == 1
     {
         let handshake_packet_state_1 = handshake_serverbound("127.0.0.1", 25565, 1)?;
 
@@ -74,27 +65,52 @@ fn main() -> Result<(), Box<dyn Error>>
         // stream.write_byte(0x00)?;
         // stream.write_string("dennis", 16)?;
 
-        //skip set-compression
-        stream.read_varint()?;
-        stream.read_byte()?;
-        stream.read_varint()?;
+        //set-compression packet
+        let set_compression_packet_size = stream.read_varint()?;
+        let set_compression_packet_id = stream.read_byte()?;
+        let set_compression_threshold  = stream.read_varint()?;
+
+        println!("set-compression-packet SIZE: {set_compression_packet_size}, ID: {set_compression_packet_id}, THRESHOLD: {set_compression_threshold}");
+
+        
 
         let packet_size = stream.read_varint()?;
         let packed_id = stream.read_byte()?;
-        let received_uuid = stream.read_long()?;
+        let received_uuid = stream.read_uuid()?;
+        
 
-        println!("{} {} {}", packet_size, packed_id, received_uuid);
+
         let received_username = stream.read_string()?;
 
 
         println!("{} {} {} {}", packet_size, packed_id, received_uuid, received_username);
-
         //acknowledge the connection
         stream.write_varint(1)?;
         stream.write_byte(0x03)?;
 
 
+        stream.write_varint(255)?;
+        stream.write_byte(0x03)?;
+        stream.write_string("hello", 256)?;
+
+
     }
+
+
+    // let stream_cloned = stream.try_clone()?;
+    // let listen_to_server_thread = thread::spawn
+    // (
+    //     ||
+    //     {
+    //         let packet_size = stream.read_varint();
+    //         let packet_id = stream.read_byte();
+
+
+    //     }
+    // );
+
+
+
     loop{}
 
 
@@ -102,39 +118,22 @@ fn main() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-
-fn receive_message(mut stream: TcpStream) -> Result<(), Box<dyn Error>>
+fn decode_compressed_packet(stream: TcpStream) -> (i32, i32, io::Result<Vec<u8>>)
 {
-    let mut buffer = [0; 1024];
-    loop
-    {
-        match stream.read(&mut buffer)
-        {
-            Ok(bytes_read) if bytes_read > 0
-                =>
-                {
-                    let message = String::from_utf8_lossy(&buffer[..bytes_read]);
-                    println!("I've received: {}", message);
-                }
-            
-            Ok(_)
-                =>
-                {
-                    println!("Connection lost.");
-                }
+    let uncompressed_packet_length = stream.read_varint();
+    let uncompressed_packet_data_length = stream.read_varint();
 
-            Err(e)
-                =>
-                {
-                    eprintln!("Error: {}", e);
-                    break;
-                }
-        }
+
+    if uncompressed_packet_data_length == 0
+    {
+        println!("Received packet is uncompressed.");
+    }
+    else 
+    {
+        println!("Received packet is uncompressed.");
     }
 
-    Ok(())
 }
-
 
 
 fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<Vec<u8>>
@@ -292,9 +291,12 @@ impl WriteVarInt for Vec<u8>
         {
             if (_value & !SEGMENT_BITS) == 0
             {
+                println!("break: _value: {}", _value as u8);
                 self.push(_value as u8);
                 break;
             }
+
+            println!("not-break _value: {}", ((_value & SEGMENT_BITS) | CONTINUE_BIT) as u8);
 
             self.push(((_value & SEGMENT_BITS) | CONTINUE_BIT) as u8);
 
@@ -376,6 +378,7 @@ impl ReadString for TcpStream
     fn read_string(&mut self) -> io::Result<String> 
     {
         let size_to_be_read = self.read_varint()? as usize;
+        println!("Received length: {}", size_to_be_read);
         let mut read_buffer = vec![0; size_to_be_read];
         let _ = self.read_exact(&mut read_buffer);
         let result = String::from_utf8(read_buffer);
