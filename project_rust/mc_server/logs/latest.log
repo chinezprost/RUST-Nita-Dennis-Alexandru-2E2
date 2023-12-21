@@ -1,17 +1,17 @@
-[00:37:57] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
-[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
-[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[00:37:57] [ServerMain/WARN]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[00:37:57] [ServerMain/INFO]: Reloading ResourceManager: Default
-[00:37:58] [Worker-Main-22/INFO]: Loaded 7 recipes
-[00:37:58] [Worker-Main-22/INFO]: Loaded 1141 advancements
-[00:38:01] [Server thread/INFO]: Starting minecraft server version 1.18
-[00:38:01] [Server thread/INFO]: Loading properties
-[00:38:01] [Server thread/INFO]: Default game type: SURVIVAL
-[00:38:01] [Server thread/INFO]: Generating keypair
-[00:38:01] [Server console handler/ERROR]: Exception handling console input
+[00:25:58] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[00:25:58] [ServerMain/WARN]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[00:25:58] [ServerMain/WARN]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[00:25:58] [ServerMain/WARN]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[00:25:58] [ServerMain/WARN]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[00:25:58] [ServerMain/WARN]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[00:25:58] [ServerMain/INFO]: Reloading ResourceManager: Default
+[00:25:58] [Worker-Main-26/INFO]: Loaded 7 recipes
+[00:25:59] [Worker-Main-26/INFO]: Loaded 1141 advancements
+[00:26:01] [Server thread/INFO]: Starting minecraft server version 1.18
+[00:26:01] [Server thread/INFO]: Loading properties
+[00:26:01] [Server thread/INFO]: Default game type: SURVIVAL
+[00:26:01] [Server thread/INFO]: Generating keypair
+[00:26:01] [Server console handler/ERROR]: Exception handling console input
 java.io.IOException: The handle is invalid
 	at java.io.FileInputStream.readBytes(Native Method) ~[?:?]
 	at java.io.FileInputStream.read(FileInputStream.java:293) ~[?:?]
@@ -28,42 +28,158 @@ java.io.IOException: The handle is invalid
 	at java.io.BufferedReader.readLine(BufferedReader.java:348) ~[?:?]
 	at java.io.BufferedReader.readLine(BufferedReader.java:437) ~[?:?]
 	at acj$1.run(SourceFile:101) [server-1.18.jar:?]
-[00:38:01] [Server thread/INFO]: Starting Minecraft server on *:25565
-[00:38:01] [Server thread/INFO]: Using default channel type
-[00:38:01] [Server thread/INFO]: Preparing level "world"
-[00:38:01] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
-[00:38:02] [Worker-Main-17/INFO]: Preparing spawn area: 0%
-[00:38:02] [Worker-Main-25/INFO]: Preparing spawn area: 0%
-[00:38:02] [Worker-Main-26/INFO]: Preparing spawn area: 0%
-[00:38:05] [Worker-Main-27/INFO]: Preparing spawn area: 0%
-[00:38:05] [Worker-Main-26/INFO]: Preparing spawn area: 0%
-[00:38:05] [Worker-Main-26/INFO]: Preparing spawn area: 0%
-[00:38:05] [Worker-Main-27/INFO]: Preparing spawn area: 0%
-[00:38:05] [Worker-Main-19/INFO]: Preparing spawn area: 0%
-[00:38:06] [Worker-Main-25/INFO]: Preparing spawn area: 3%
-[00:38:06] [Worker-Main-25/INFO]: Preparing spawn area: 3%
-[00:38:06] [Worker-Main-23/INFO]: Preparing spawn area: 15%
-[00:38:07] [Worker-Main-29/INFO]: Preparing spawn area: 34%
-[00:38:07] [Worker-Main-21/INFO]: Preparing spawn area: 51%
-[00:38:08] [Worker-Main-20/INFO]: Preparing spawn area: 68%
-[00:38:08] [Worker-Main-23/INFO]: Preparing spawn area: 68%
-[00:38:09] [Worker-Main-26/INFO]: Preparing spawn area: 71%
-[00:38:09] [Worker-Main-19/INFO]: Preparing spawn area: 74%
-[00:38:10] [Worker-Main-19/INFO]: Preparing spawn area: 81%
-[00:38:10] [Worker-Main-23/INFO]: Preparing spawn area: 84%
-[00:38:11] [Worker-Main-23/INFO]: Preparing spawn area: 91%
-[00:38:11] [Worker-Main-27/INFO]: Preparing spawn area: 99%
-[00:38:11] [Server thread/INFO]: Time elapsed: 10018 ms
-[00:38:11] [Server thread/INFO]: Done (10.108s)! For help, type "help"
-[10:40:01] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 33896825ms or 677936 ticks behind
-[11:03:30] [Server thread/INFO]: [Server] s
-[11:06:56] [Server thread/INFO]: Stopping server
-[11:06:56] [Server thread/INFO]: Saving players
-[11:06:56] [Server thread/INFO]: Saving worlds
-[11:06:56] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[11:06:57] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[11:06:57] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
-[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[11:06:57] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+[00:26:01] [Server thread/INFO]: Starting Minecraft server on *:25565
+[00:26:01] [Server thread/INFO]: Using default channel type
+[00:26:02] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[00:26:02] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[00:26:02] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[00:26:02] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[00:26:02] [Server thread/INFO]: Preparing level "world"
+[00:26:02] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[00:26:03] [Worker-Main-25/INFO]: Preparing spawn area: 0%
+[00:26:03] [Worker-Main-25/INFO]: Preparing spawn area: 0%
+[00:26:03] [Worker-Main-18/INFO]: Preparing spawn area: 0%
+[00:26:05] [Worker-Main-24/INFO]: Preparing spawn area: 0%
+[00:26:05] [Worker-Main-27/INFO]: Preparing spawn area: 0%
+[00:26:05] [Worker-Main-24/INFO]: Preparing spawn area: 0%
+[00:26:05] [Worker-Main-27/INFO]: Preparing spawn area: 0%
+[00:26:05] [Worker-Main-27/INFO]: Preparing spawn area: 0%
+[00:26:06] [Worker-Main-19/INFO]: Preparing spawn area: 1%
+[00:26:06] [Worker-Main-23/INFO]: Preparing spawn area: 4%
+[00:26:07] [Worker-Main-16/INFO]: Preparing spawn area: 13%
+[00:26:07] [Worker-Main-21/INFO]: Preparing spawn area: 31%
+[00:26:08] [Worker-Main-19/INFO]: Preparing spawn area: 51%
+[00:26:08] [Worker-Main-20/INFO]: Preparing spawn area: 68%
+[00:26:09] [Worker-Main-19/INFO]: Preparing spawn area: 68%
+[00:26:09] [Worker-Main-19/INFO]: Preparing spawn area: 69%
+[00:26:10] [Worker-Main-25/INFO]: Preparing spawn area: 73%
+[00:26:10] [Worker-Main-28/INFO]: Preparing spawn area: 80%
+[00:26:11] [Worker-Main-26/INFO]: Preparing spawn area: 83%
+[00:26:11] [Worker-Main-18/INFO]: Preparing spawn area: 85%
+[00:26:12] [Worker-Main-21/INFO]: Preparing spawn area: 87%
+[00:26:12] [Worker-Main-20/INFO]: Preparing spawn area: 95%
+[00:26:13] [Server thread/INFO]: Time elapsed: 10770 ms
+[00:26:13] [Server thread/INFO]: Done (10.892s)! For help, type "help"
+[01:06:57] [Server thread/INFO]: /127.0.0.1:62958 lost connection: Internal Exception: io.netty.handler.codec.DecoderException: java.lang.IndexOutOfBoundsException: Index 6 out of bounds for length 3
+[01:10:18] [Server thread/INFO]: /127.0.0.1:62973 lost connection: Internal Exception: io.netty.handler.codec.DecoderException: java.lang.IndexOutOfBoundsException: Index 6 out of bounds for length 3
+[01:13:21] [Server thread/INFO]: /127.0.0.1:62978 lost connection: Internal Exception: io.netty.handler.codec.DecoderException: java.lang.IndexOutOfBoundsException: Index 6 out of bounds for length 3
+[01:15:15] [Server thread/INFO]: /127.0.0.1:62987 lost connection: Internal Exception: io.netty.handler.codec.DecoderException: java.lang.IndexOutOfBoundsException: Index 6 out of bounds for length 3
+[01:16:00] [Server thread/INFO]: /127.0.0.1:62989 lost connection: Internal Exception: io.netty.handler.codec.DecoderException: java.lang.IndexOutOfBoundsException: Index 6 out of bounds for length 3
+[01:18:47] [Server thread/INFO]: /127.0.0.1:62996 lost connection: Internal Exception: io.netty.handler.codec.DecoderException: java.lang.IndexOutOfBoundsException: Index 6 out of bounds for length 3
+[01:20:30] [Server thread/INFO]: /127.0.0.1:62999 lost connection: Internal Exception: io.netty.handler.codec.DecoderException: java.lang.IndexOutOfBoundsException: Index 6 out of bounds for length 3
+[01:25:22] [Server thread/INFO]: /127.0.0.1:63008 lost connection: Disconnected
+[01:25:26] [Server thread/INFO]: /127.0.0.1:63009 lost connection: Disconnected
+[01:26:16] [Server thread/INFO]: dennis[/127.0.0.1:63011] logged in with entity id 129 at (4.5, 73.0, 2.5)
+[01:26:16] [Server thread/INFO]: dennis joined the game
+[01:26:17] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:26:17] [Server thread/INFO]: dennis left the game
+[01:26:17] [Server thread/WARN]: handleDisconnection() called twice
+[01:26:52] [Server thread/INFO]: dennis[/127.0.0.1:63012] logged in with entity id 130 at (4.5, 73.0, 2.5)
+[01:26:52] [Server thread/INFO]: dennis joined the game
+[01:26:52] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:26:52] [Server thread/INFO]: dennis left the game
+[01:26:52] [Server thread/WARN]: handleDisconnection() called twice
+[01:27:32] [Server thread/INFO]: dennis[/127.0.0.1:63014] logged in with entity id 131 at (4.5, 73.0, 2.5)
+[01:27:32] [Server thread/INFO]: dennis joined the game
+[01:27:34] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:27:34] [Server thread/INFO]: dennis left the game
+[01:31:07] [Server thread/INFO]: dennis[/127.0.0.1:63028] logged in with entity id 249 at (4.5, 73.0, 2.5)
+[01:31:07] [Server thread/INFO]: dennis joined the game
+[01:31:08] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:31:08] [Server thread/INFO]: dennis left the game
+[01:31:34] [Server thread/INFO]: dennis[/127.0.0.1:63030] logged in with entity id 258 at (4.5, 73.0, 2.5)
+[01:31:34] [Server thread/INFO]: dennis joined the game
+[01:31:35] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:31:35] [Server thread/INFO]: dennis left the game
+[01:31:49] [Server thread/INFO]: dennis[/127.0.0.1:63032] logged in with entity id 259 at (4.5, 73.0, 2.5)
+[01:31:49] [Server thread/INFO]: dennis joined the game
+[01:31:55] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:31:55] [Server thread/INFO]: dennis left the game
+[01:31:57] [Server thread/INFO]: dennis[/127.0.0.1:63033] logged in with entity id 284 at (4.5, 73.0, 2.5)
+[01:31:57] [Server thread/INFO]: dennis joined the game
+[01:32:01] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:32:01] [Server thread/INFO]: dennis left the game
+[01:32:02] [Server thread/INFO]: dennis[/127.0.0.1:63034] logged in with entity id 295 at (4.5, 73.0, 2.5)
+[01:32:02] [Server thread/INFO]: dennis joined the game
+[01:32:07] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:32:07] [Server thread/INFO]: dennis left the game
+[01:32:08] [Server thread/INFO]: dennis[/127.0.0.1:63035] logged in with entity id 305 at (4.5, 73.0, 2.5)
+[01:32:08] [Server thread/INFO]: dennis joined the game
+[01:32:08] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:32:08] [Server thread/INFO]: dennis left the game
+[01:33:22] [Server thread/INFO]: dennis[/127.0.0.1:63037] logged in with entity id 309 at (4.5, 73.0, 2.5)
+[01:33:22] [Server thread/INFO]: dennis joined the game
+[01:33:23] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:33:23] [Server thread/INFO]: dennis left the game
+[01:33:36] [Server thread/INFO]: dennis[/127.0.0.1:63038] logged in with entity id 310 at (4.5, 73.0, 2.5)
+[01:33:36] [Server thread/INFO]: dennis joined the game
+[01:33:37] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:33:37] [Server thread/INFO]: dennis left the game
+[01:33:38] [Server thread/INFO]: dennis[/127.0.0.1:63039] logged in with entity id 315 at (4.5, 73.0, 2.5)
+[01:33:38] [Server thread/INFO]: dennis joined the game
+[01:33:38] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:33:38] [Server thread/INFO]: dennis left the game
+[01:33:43] [Server thread/INFO]: dennis[/127.0.0.1:63040] logged in with entity id 316 at (4.5, 73.0, 2.5)
+[01:33:43] [Server thread/INFO]: dennis joined the game
+[01:33:43] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:33:43] [Server thread/INFO]: dennis left the game
+[01:34:21] [Server thread/INFO]: dennis[/127.0.0.1:63042] logged in with entity id 318 at (4.5, 73.0, 2.5)
+[01:34:21] [Server thread/INFO]: dennis joined the game
+[01:34:22] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:34:22] [Server thread/INFO]: dennis left the game
+[01:34:23] [Server thread/INFO]: dennis[/127.0.0.1:63043] logged in with entity id 319 at (4.5, 73.0, 2.5)
+[01:34:23] [Server thread/INFO]: dennis joined the game
+[01:34:23] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:34:23] [Server thread/INFO]: dennis left the game
+[01:34:24] [Server thread/INFO]: dennis[/127.0.0.1:63044] logged in with entity id 321 at (4.5, 73.0, 2.5)
+[01:34:24] [Server thread/INFO]: dennis joined the game
+[01:34:24] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:34:24] [Server thread/INFO]: dennis left the game
+[01:34:51] [Server thread/INFO]: dennis[/127.0.0.1:63046] logged in with entity id 327 at (4.5, 73.0, 2.5)
+[01:34:51] [Server thread/INFO]: dennis joined the game
+[01:34:51] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:34:51] [Server thread/INFO]: dennis left the game
+[01:34:51] [Server thread/WARN]: handleDisconnection() called twice
+[01:36:43] [Server thread/INFO]: dennis[/127.0.0.1:63050] logged in with entity id 328 at (4.5, 73.0, 2.5)
+[01:36:43] [Server thread/INFO]: dennis joined the game
+[01:36:43] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:36:43] [Server thread/INFO]: dennis left the game
+[01:36:43] [Server thread/WARN]: handleDisconnection() called twice
+[01:36:55] [Server thread/INFO]: com.mojang.authlib.GameProfile@3521b6ff[id=<null>,name=dennis,properties={},legacy=false] (/127.0.0.1:63051) lost connection: Disconnected
+[01:36:56] [Server thread/INFO]: dennis[/127.0.0.1:63052] logged in with entity id 329 at (4.5, 73.0, 2.5)
+[01:36:56] [Server thread/INFO]: dennis joined the game
+[01:36:56] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:36:56] [Server thread/INFO]: dennis left the game
+[01:36:56] [Server thread/WARN]: handleDisconnection() called twice
+[01:36:58] [Server thread/INFO]: dennis[/127.0.0.1:63053] logged in with entity id 330 at (4.5, 73.0, 2.5)
+[01:36:58] [Server thread/INFO]: dennis joined the game
+[01:36:58] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:36:58] [Server thread/INFO]: dennis left the game
+[01:36:58] [Server thread/WARN]: handleDisconnection() called twice
+[01:36:59] [Server thread/INFO]: dennis[/127.0.0.1:63054] logged in with entity id 331 at (4.5, 73.0, 2.5)
+[01:36:59] [Server thread/INFO]: dennis joined the game
+[01:36:59] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:36:59] [Server thread/INFO]: dennis left the game
+[01:36:59] [Server thread/WARN]: handleDisconnection() called twice
+[01:36:59] [Server thread/INFO]: dennis[/127.0.0.1:63055] logged in with entity id 332 at (4.5, 73.0, 2.5)
+[01:36:59] [Server thread/INFO]: dennis joined the game
+[01:36:59] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:36:59] [Server thread/INFO]: dennis left the game
+[01:36:59] [Server thread/WARN]: handleDisconnection() called twice
+[01:37:25] [Server thread/INFO]: dennis[/127.0.0.1:63056] logged in with entity id 333 at (4.5, 73.0, 2.5)
+[01:37:25] [Server thread/INFO]: dennis joined the game
+[01:37:25] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:37:25] [Server thread/INFO]: dennis left the game
+[01:37:25] [Server thread/WARN]: handleDisconnection() called twice
+[01:39:50] [Server thread/INFO]: dennis[/127.0.0.1:63063] logged in with entity id 334 at (4.5, 73.0, 2.5)
+[01:39:50] [Server thread/INFO]: dennis joined the game
+[01:40:05] [Server thread/INFO]: dennis lost connection: Timed out
+[01:40:05] [Server thread/INFO]: dennis left the game
+[01:40:12] [Server thread/INFO]: dennis[/127.0.0.1:63064] logged in with entity id 364 at (4.5, 73.0, 2.5)
+[01:40:12] [Server thread/INFO]: dennis joined the game
+[01:40:14] [Server thread/INFO]: dennis lost connection: Disconnected
+[01:40:14] [Server thread/INFO]: dennis left the game
+[01:43:59] [Server thread/INFO]: dennis[/127.0.0.1:63081] logged in with entity id 372 at (4.5, 73.0, 2.5)
+[01:43:59] [Server thread/INFO]: dennis joined the game
+[01:44:14] [Server thread/INFO]: dennis lost connection: Timed out
+[01:44:14] [Server thread/INFO]: dennis left the game
