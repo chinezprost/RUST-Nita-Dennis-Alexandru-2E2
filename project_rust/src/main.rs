@@ -1,15 +1,19 @@
 use core::time;
+use std::borrow::Borrow;
 use std::io::{self,  Write, Read};
 use std::net::TcpStream;
-use std::result;
+use std::{result, vec};
 use std::thread::{self};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::error::Error;
 
-use flate2::read::ZlibDecoder;
+use flate2::read::{ZlibDecoder, self};
+use flate2::write::ZlibEncoder;
 
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
+
+const COMPRESSION_THRESHOLD: i32 = 128;
 
 fn main() -> Result<(), Box<dyn Error>>
 {
@@ -70,30 +74,26 @@ fn main() -> Result<(), Box<dyn Error>>
         let set_compression_packet_id = stream.read_byte()?;
         let set_compression_threshold  = stream.read_varint()?;
 
+
         println!("set-compression-packet SIZE: {set_compression_packet_size}, ID: {set_compression_packet_id}, THRESHOLD: {set_compression_threshold}");
 
+        // FROM NOW ON PACKETS ARE COMPRESSED
+        // FROM NOW ON PACKETS ARE COMPRESSED
+        // FROM NOW ON PACKETS ARE COMPRESSED
+        
+        let mut received_packet = decode_packet(stream.try_clone()?)?;
+        println!("-{}-", received_packet.len());
+
+        let packet_size = received_packet.read_varint()?;
+        let packet_id = received_packet.read_varint()?;
+        let received_uuid = received_packet.read_uuid()?;
+        //let received_username = received_packet.read_string()?;
+        println!("{} {} {}", packet_size, packet_id, received_uuid);
+
         
 
-        let packet_size = stream.read_varint()?;
-        let packed_id = stream.read_byte()?;
-        let received_uuid = stream.read_uuid()?;
-        
-
-
-        let received_username = stream.read_string()?;
-
-
-        println!("{} {} {} {}", packet_size, packed_id, received_uuid, received_username);
+        println!("im here");
         //acknowledge the connection
-        stream.write_varint(1)?;
-        stream.write_byte(0x03)?;
-
-
-        stream.write_varint(255)?;
-        stream.write_byte(0x03)?;
-        stream.write_string("hello", 256)?;
-
-
     }
 
 
@@ -118,21 +118,66 @@ fn main() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-fn decode_compressed_packet(stream: TcpStream) -> (i32, i32, io::Result<Vec<u8>>)
+fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>>
 {
-    let uncompressed_packet_length = stream.read_varint();
-    let uncompressed_packet_data_length = stream.read_varint();
+    let compressed_packet_length = stream.read_varint()?;
+    println!("compressed_packet_length: {}", compressed_packet_length);
+    let data_length = stream.read_varint()?;
+    println!("data_length: {}", data_length);
 
 
-    if uncompressed_packet_data_length == 0
+    let mut final_packet: Vec<u8> = Vec::new();
+
+    if data_length > 0
     {
-        println!("Received packet is uncompressed.");
+        let mut compressed_data = vec![0u8; compressed_packet_length as usize];
+        stream.read_exact(&mut compressed_data)?;
+        final_packet.write_varint(data_length)?;
+        let mut decoded_array = Vec::new();
+        let mut zlib_decoder = ZlibDecoder::new(compressed_data.as_slice());
+        zlib_decoder.read_to_end(&mut decoded_array)?;
+        final_packet.extend_from_slice(&decoded_array);
     }
-    else 
+    else
     {
-        println!("Received packet is uncompressed.");
+        final_packet.write_varint(compressed_packet_length)?;
+        let mut uncompressed_data = vec![0u8; compressed_packet_length as usize];
+        stream.read_exact(&mut uncompressed_data)?;
+        println!("uncompressed data size: {}", uncompressed_data.len());
+        final_packet.extend_from_slice(&uncompressed_data);
+    }
+    Ok(final_packet)
+}
+
+fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>>
+{
+    let mut final_packet: Vec<u8> = Vec::new();
+
+    if COMPRESSION_THRESHOLD >= 0 && data.len() as i32 > COMPRESSION_THRESHOLD
+    {
+        let mut zlib_encoder = ZlibEncoder::new(Vec::new(), Default::default());
+        
+        let mut packet_id_as_vec = Vec::new();
+        packet_id_as_vec.write_varint(packet_id)?;
+
+        zlib_encoder.write_all(&packet_id_as_vec)?;
+        zlib_encoder.write_all(data)?;
+
+        let compressed_data = zlib_encoder.finish()?;
+
+        final_packet.write_varint((compressed_data.len() + packet_id.get_varint_len()) as i32)?;
+        final_packet.write_varint(compressed_data.len() as i32)?;
+        final_packet.write_all(&compressed_data)?;
+
+    }
+    else
+    {
+        final_packet.write_varint((packet_id.get_varint_len() + data.len()) as i32)?;
+        final_packet.write_varint(packet_id)?;
+        final_packet.write_all(data)?;
     }
 
+    Ok(final_packet)
 }
 
 
@@ -164,6 +209,35 @@ fn login_start_serverbound(_username: &str) -> io::Result<Vec<u8>>
 
 
 //trait-uri
+
+trait VarIntLength
+{
+    fn get_varint_len(&self) -> usize;
+}
+
+impl VarIntLength for i32
+{
+    fn get_varint_len(&self) -> usize
+    {
+        let mut varint_length = 0;
+        let mut value = *self;
+        loop
+        {
+            varint_length = varint_length + 1;
+
+            value >>= 7;
+
+            if value == 0
+            {
+                break;
+            }
+        }
+        return varint_length;
+    }
+}
+
+
+
 trait WriteVarInt
 {
     fn write_varint(&mut self, _value: i32) -> io::Result<()>;
@@ -249,13 +323,31 @@ impl ReadUUID for TcpStream
         Ok(i128::from_le_bytes(read_buffer))
 
     }
-
 }
+
+impl ReadUUID for Vec<u8>
+{
+    fn read_uuid(&mut self) -> io::Result<i128>
+    {
+        let mut read_buffer:[u8; 16] = [0; 16];
+
+        for i in 0..15
+        {
+            read_buffer[i] = self.read_byte()? as u8;
+        }
+        Ok(i128::from_le_bytes(read_buffer))
+    }
+}
+
 
 trait ReadJSONString
 {
     fn read_json_string(&mut self, _length: usize) -> io::Result<String>;
 }
+
+
+
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////// VARINT
 impl WriteVarInt for TcpStream
@@ -291,12 +383,9 @@ impl WriteVarInt for Vec<u8>
         {
             if (_value & !SEGMENT_BITS) == 0
             {
-                println!("break: _value: {}", _value as u8);
                 self.push(_value as u8);
                 break;
             }
-
-            println!("not-break _value: {}", ((_value & SEGMENT_BITS) | CONTINUE_BIT) as u8);
 
             self.push(((_value & SEGMENT_BITS) | CONTINUE_BIT) as u8);
 
@@ -310,6 +399,7 @@ impl WriteVarInt for Vec<u8>
         Ok(())
     }
 }
+
 
 impl ReadVarInt for TcpStream
 {
@@ -335,7 +425,34 @@ impl ReadVarInt for TcpStream
         {
             println!("VarInt too big!");
         } 
-        println!();
+        Ok(value)
+    }
+}
+
+impl ReadVarInt for Vec<u8>
+{
+    fn read_varint(&mut self) -> io::Result<i32>
+    {
+        let mut value: i32 = 0;
+        let mut position: i32 = 0;
+        let mut current_octet: u8;
+
+        loop
+        {
+            current_octet = self.read_byte()? as u8;
+            value |= (i32::from(SEGMENT_BITS as u8 & current_octet) << position) as i32;
+
+            if (current_octet & CONTINUE_BIT as u8) == 0
+            {
+                break;
+            }
+
+            position += 7;
+        }
+        if position >= 32
+        {
+            println!("VarInt too big!");
+        } 
         Ok(value)
     }
 }
@@ -378,9 +495,23 @@ impl ReadString for TcpStream
     fn read_string(&mut self) -> io::Result<String> 
     {
         let size_to_be_read = self.read_varint()? as usize;
-        println!("Received length: {}", size_to_be_read);
         let mut read_buffer = vec![0; size_to_be_read];
         let _ = self.read_exact(&mut read_buffer);
+        let result = String::from_utf8(read_buffer);
+        Ok(result.unwrap())
+    }
+}
+
+impl ReadString for Vec<u8>
+{
+    fn read_string(&mut self) -> io::Result<String> 
+    {
+        let size_to_be_read = self.read_varint()? as usize;
+        let mut read_buffer = vec![0; size_to_be_read];
+        for i in 0..size_to_be_read
+        {
+            read_buffer[i] = self.read_byte()? as u8;
+        }
         let result = String::from_utf8(read_buffer);
         Ok(result.unwrap())
     }
@@ -484,6 +615,19 @@ impl ReadByte for TcpStream
         let mut read_buffer = [0; 1];
         self.read_exact(&mut read_buffer)?;
         Ok(read_buffer[0].to_le() as i8)
+    }
+}
+
+impl ReadByte for Vec<u8>
+{
+    fn read_byte(&mut self) -> io::Result<i8>
+    {
+        let mut result: i8 = 0;
+        if self.len() > 0
+        {
+            result = self.remove(0) as i8;
+        }
+        Ok(result)
     }
 }
 
