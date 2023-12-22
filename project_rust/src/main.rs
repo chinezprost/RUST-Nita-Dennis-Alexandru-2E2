@@ -18,12 +18,12 @@ const COMPRESSION_THRESHOLD: i32 = 128;
 fn main() -> Result<(), Box<dyn Error>>
 {
     
-    let mut stream = TcpStream::connect("127.0.0.1:25564")?;
+    let mut stream = TcpStream::connect("127.0.0.1:25565")?;
+    
     // handshake_serverbound("127.0.01", 25565, 2)?;
 
     let next_state = 2;
 
-    
     if next_state == 1
     {
         let handshake_packet_state_1 = handshake_serverbound("127.0.0.1", 25565, 1)?;
@@ -75,43 +75,84 @@ fn main() -> Result<(), Box<dyn Error>>
         let set_compression_threshold  = stream.read_varint()?;
 
 
-        println!("set-compression-packet SIZE: {set_compression_packet_size}, ID: {set_compression_packet_id}, THRESHOLD: {set_compression_threshold}");
 
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
+        let mut stream_cloned = stream.try_clone()?;
+        let listen_to_server_thread = thread::spawn
+        (
+            move||
+            {
+                loop
+                {
+                    let mut received_packet = decode_packet(stream_cloned.try_clone().unwrap()).unwrap();
+                    let packet_size = received_packet.read_varint().unwrap();
+                    let packet_id = received_packet.read_varint().unwrap();
+
+                    match packet_id
+                    {
+                        0x02 =>
+                            {
+                                println!("Server Connected");
+                                let received_uuid = received_packet.read_uuid().unwrap();
+                                let received_username = received_packet.read_string().unwrap();
+                                println!("{} {} {} {}", packet_size, packet_id, received_uuid, received_username);
+                                println!("Connected.");
+                            }
+                        0x0F =>
+                            {
+                                println!("Server Chat:");
+                                
+                                let received_message = received_packet.read_string().unwrap();
+                                let received_position = received_packet.read_byte().unwrap();
+                                let received_sender = received_packet.read_uuid().unwrap();
+                            }
+                        0x00 =>
+                            {
+                                println!("Server Spawn:");
+                                let entity_id = received_packet.read_varint().unwrap();
+                                let object_uuid = received_packet.read_uuid().unwrap();
+                                let entity_type = received_packet.read_varint().unwrap();
+
+                                println!("{} {} {}", entity_id, object_uuid, entity_type);
+                            }
+                        _ => println!("Invalid packet. ID: {}", packet_id),
+                    }
+                }
+            }
+        );
         
-        let mut received_packet = decode_packet(stream.try_clone()?)?;
-        println!("-{}-", received_packet.len());
 
-        let packet_size = received_packet.read_varint()?;
-        let packet_id = received_packet.read_varint()?;
-        let received_uuid = received_packet.read_uuid()?;
-        let received_username = received_packet.read_string()?;
-        println!("{} {} {} {}", packet_size, packet_id, received_uuid, received_username);
-
-        println!("Connected.");
+        //send info packet
+        // let mut client_settings_packet: Vec<u8> = Vec::new();
+        // client_settings_packet.write_string("en_GB")?;
+        // client_settings_packet.write_byte(8)?;
+        // client_settings_packet.write_varint(0x00)?;
+        // client_settings_packet.write_byte(0x01)?;
+        // client_settings_packet.write_byte(0x01)?;
+        // client_settings_packet.write_varint(0x01)?;
+        // client_settings_packet.write_byte(0x00)?;
+        // client_settings_packet.write_byte(0x01)?;
+        //
+        // let client_settings_encoded_packet = encode_packet(0x05, &client_settings_packet)?;
+        // stream.write_all(&client_settings_encoded_packet)?;
+        //end send info packet
 
         let mut chat_message_string: Vec<u8> = Vec::new();
-        chat_message_string.write_string("hello", 256)?;
+        chat_message_string.write_string("hello")?;
         let chat_message = encode_packet(0x03, &chat_message_string)?;
-        println!("-{}-", chat_message.len());
         stream.write_all(&chat_message)?;
         //acknowledge the connection
     }
 
 
-    // let stream_cloned = stream.try_clone()?;
-    // let listen_to_server_thread = thread::spawn
-    // (
-    //     ||
-    //     {
-    //         let packet_size = stream.read_varint();
-    //         let packet_id = stream.read_byte();
 
 
-    //     }
-    // );
+
+
+
+    
 
 
 
@@ -125,29 +166,40 @@ fn main() -> Result<(), Box<dyn Error>>
 fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>>
 {
     let compressed_packet_length = stream.read_varint()?;
-    println!("compressed_packet_length: {}", compressed_packet_length);
     let data_length = stream.read_varint()?;
-    println!("data_length: {}", data_length);
 
+    
 
     let mut final_packet: Vec<u8> = Vec::new();
 
     if data_length > 0
     {
-        let mut compressed_data = vec![0u8; compressed_packet_length as usize];
+        println!("Decoding compressed: C-Size: {compressed_packet_length}, U-Size: {data_length}.");
+        let mut compressed_data = vec![0u8; (compressed_packet_length-2) as usize];
         stream.read_exact(&mut compressed_data)?;
         final_packet.write_varint(data_length)?;
+
         let mut decoded_array = Vec::new();
         let mut zlib_decoder = ZlibDecoder::new(compressed_data.as_slice());
-        zlib_decoder.read_to_end(&mut decoded_array)?;
-        final_packet.extend_from_slice(&decoded_array);
+
+        match zlib_decoder.read_to_end(&mut decoded_array)
+        {
+            Ok(_) => 
+            {
+                final_packet.extend_from_slice(&decoded_array);
+            }
+            Err(err) =>
+            {
+                eprintln!("Error decompressing data: {:?}", err);
+            }
+        }
     }
     else
     {
+        println!("Decoding uncompressed: C-Size: {compressed_packet_length}, U-Size: {data_length}.");
         final_packet.write_varint(compressed_packet_length)?;
-        let mut uncompressed_data = vec![0u8; compressed_packet_length as usize];
+        let mut uncompressed_data = vec![0u8; (compressed_packet_length-1) as usize];
         stream.read_exact(&mut uncompressed_data)?;
-        println!("uncompressed data size: {}", uncompressed_data.len());
         final_packet.extend_from_slice(&uncompressed_data);
     }
     Ok(final_packet)
@@ -156,7 +208,6 @@ fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>>
 fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>>
 {
     let mut final_packet: Vec<u8> = Vec::new();
-    println!("data-len: {}", data.len());
     if COMPRESSION_THRESHOLD >= 0 && data.len() as i32 > COMPRESSION_THRESHOLD
     {
         let mut zlib_encoder = ZlibEncoder::new(Vec::new(), Default::default());
@@ -201,7 +252,7 @@ fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<
 
     formed_packet.write_byte(0x00)?; // PacketID-ul
     formed_packet.write_varint(757)?; // Protocolul pentru 1.18
-    formed_packet.write_string(_address, 255)?; // Adresa la care ma conectez // 127.0.0.1 (folosita si pt mc.minecraft-romania.ro:25565 de ex)
+    formed_packet.write_string(_address)?; // Adresa la care ma conectez // 127.0.0.1 (folosita si pt mc.minecraft-romania.ro:25565 de ex)
     formed_packet.write_u16(_port)?; // PORT-ul
     formed_packet.write_varint(_state)?;
 
@@ -216,7 +267,7 @@ fn login_start_serverbound(_username: &str) -> io::Result<Vec<u8>>
         println!("Invalid username.");
     }
     formed_packet.write_byte(0x00)?;
-    formed_packet.write_string(_username, 16)?;
+    formed_packet.write_string(_username)?;
 
     Ok(formed_packet)
 }
@@ -266,7 +317,7 @@ trait ReadVarInt
 
 trait WriteString
 {
-    fn write_string(&mut self, _value: &str, _size: u32) -> io::Result<()>;
+    fn write_string(&mut self, _value: &str) -> io::Result<()>;
 }
 
 trait ReadString
@@ -475,13 +526,9 @@ impl ReadVarInt for Vec<u8>
 
 impl WriteString for TcpStream
 {
-    fn write_string(&mut self, _value: &str, _size: u32) -> io::Result<()>
+    fn write_string(&mut self, _value: &str) -> io::Result<()>
     {
         let mut result = Vec::new();
-        if _value.len() > _size as usize
-        {
-            println!("Write string failure.");
-        }
         result.write_varint(_value.len() as i32)?;
         result.extend_from_slice(_value.as_bytes());
         self.write_all(&result)?;
@@ -491,12 +538,8 @@ impl WriteString for TcpStream
 
 impl WriteString for Vec<u8>
 {
-    fn write_string(&mut self, _value: &str, _size: u32) -> io::Result<()>
+    fn write_string(&mut self, _value: &str) -> io::Result<()>
     {
-        if _value.len() > _size as usize
-        {
-            println!("Write string failure.");
-        }
         self.write_varint((_value.len()) as i32)?;
         self.extend_from_slice(_value.as_bytes());
         Ok(())
@@ -521,7 +564,6 @@ impl ReadString for Vec<u8>
     {
         self.read_byte()?;
         let size_to_be_read = self.read_varint()? as usize;
-        println!("size: {}", size_to_be_read);
         let mut read_buffer = vec![0; size_to_be_read];
         for i in 0..size_to_be_read
         {
