@@ -18,7 +18,7 @@ const COMPRESSION_THRESHOLD: i32 = 128;
 fn main() -> Result<(), Box<dyn Error>>
 {
     
-    let mut stream = TcpStream::connect("127.0.0.1:25565")?;
+    let mut stream = TcpStream::connect("127.0.0.1:25564")?;
     // handshake_serverbound("127.0.01", 25565, 2)?;
 
     let next_state = 2;
@@ -87,12 +87,16 @@ fn main() -> Result<(), Box<dyn Error>>
         let packet_size = received_packet.read_varint()?;
         let packet_id = received_packet.read_varint()?;
         let received_uuid = received_packet.read_uuid()?;
-        //let received_username = received_packet.read_string()?;
-        println!("{} {} {}", packet_size, packet_id, received_uuid);
+        let received_username = received_packet.read_string()?;
+        println!("{} {} {} {}", packet_size, packet_id, received_uuid, received_username);
 
-        
+        println!("Connected.");
 
-        println!("im here");
+        let mut chat_message_string: Vec<u8> = Vec::new();
+        chat_message_string.write_string("hello", 256)?;
+        let chat_message = encode_packet(0x03, &chat_message_string)?;
+        println!("-{}-", chat_message.len());
+        stream.write_all(&chat_message)?;
         //acknowledge the connection
     }
 
@@ -152,7 +156,7 @@ fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>>
 fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>>
 {
     let mut final_packet: Vec<u8> = Vec::new();
-
+    println!("data-len: {}", data.len());
     if COMPRESSION_THRESHOLD >= 0 && data.len() as i32 > COMPRESSION_THRESHOLD
     {
         let mut zlib_encoder = ZlibEncoder::new(Vec::new(), Default::default());
@@ -172,9 +176,19 @@ fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>>
     }
     else
     {
-        final_packet.write_varint((packet_id.get_varint_len() + data.len()) as i32)?;
+        //println!("size: {}", final_packet.len());
+        final_packet.write_varint((packet_id.get_varint_len() + data.len() + 1) as i32)?;
+        //println!("size: {}", final_packet.len());
+
+        final_packet.write_varint(0)?;
+        //println!("size: {}", final_packet.len());
+
         final_packet.write_varint(packet_id)?;
+        //println!("size: {}", final_packet.len());
+
         final_packet.write_all(data)?;
+        //println!("size: {}", final_packet.len());
+
     }
 
     Ok(final_packet)
@@ -468,9 +482,8 @@ impl WriteString for TcpStream
         {
             println!("Write string failure.");
         }
-        result.write_varint(_size as i32)?;
+        result.write_varint(_value.len() as i32)?;
         result.extend_from_slice(_value.as_bytes());
-
         self.write_all(&result)?;
         Ok(())
     }
@@ -484,7 +497,7 @@ impl WriteString for Vec<u8>
         {
             println!("Write string failure.");
         }
-        self.write_varint(_value.len() as i32)?;
+        self.write_varint((_value.len()) as i32)?;
         self.extend_from_slice(_value.as_bytes());
         Ok(())
     }
@@ -506,7 +519,9 @@ impl ReadString for Vec<u8>
 {
     fn read_string(&mut self) -> io::Result<String> 
     {
+        self.read_byte()?;
         let size_to_be_read = self.read_varint()? as usize;
+        println!("size: {}", size_to_be_read);
         let mut read_buffer = vec![0; size_to_be_read];
         for i in 0..size_to_be_read
         {
