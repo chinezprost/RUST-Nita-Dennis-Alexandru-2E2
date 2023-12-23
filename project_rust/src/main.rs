@@ -9,6 +9,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{result, vec};
+use serde_json::{Result, Value};
+
+use colored::Colorize;
 
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
@@ -20,8 +23,10 @@ struct CurrentUserList {
     online_players_list: Vec<(i128, String)>,
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut stream = TcpStream::connect("127.0.0.1:25564")?;
+type main_result<T> = result::Result<T, Box<dyn std::error::Error>>;
+
+fn main() -> main_result<()> {
+    let mut stream = TcpStream::connect("localhost:25565")?;
 
     // handshake_serverbound("127.0.01", 25565, 2)?;
 
@@ -48,7 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let packet_id = stream.read_varint()?;
         let read_json = stream.read_string()?;
 
-        println!("{} {} {}", size, packet_id, read_json);
+       // println!("{} {} {}", size, packet_id, read_json);
 
         stream.write_byte(0x09)?;
         stream.write_byte(0x01)?;
@@ -58,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let packed_id = stream.read_byte()?;
         let response = stream.read_long()?;
 
-        println!("{} {} {}", size, packed_id, response);
+        //println!("{} {} {}", size, packed_id, response);
         println!("end status");
     } else {
         let handshake_packet_state_2 = handshake_serverbound("127.0.0.1", 25564, 2)?;
@@ -78,7 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let _ = stream.read_varint()?;
         let _ = stream.read_byte()?;
         let packet_threshold = stream.read_varint()?;
-        println!("[SERVER]: Packet Threshold set to {}.", packet_threshold);
+        println!("[SERVER]: Packet Threshold set to {}!", packet_threshold);
 
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
@@ -104,18 +109,18 @@ fn main() -> Result<(), Box<dyn Error>> {
                         if has_read_login_succes == true {
                             continue;
                         }
-                        println!("Valid Packet. ID: {}", packet_id);
+                        //println!("Valid Packet. ID: {}", packet_id);
                         let received_uuid = received_packet.read_uuid().unwrap();
                         let received_username = received_packet.read_string().unwrap();
-                        println!(
-                            "{} {} {} {}",
-                            packet_size, packet_id, received_uuid, received_username
-                        );
-                        println!("Connected.");
+                        // println!(
+                        //     "{} {} {} {}",
+                        //     packet_size, packet_id, received_uuid, received_username
+                        // );
+                        println!("{}", "You've been connected to the server!".green());
                         has_read_login_succes = true;
                     }
                     0x0F => {
-                        println!("Valid Packet. ID: {}", packet_id);
+                        //println!("Valid Packet. ID: {}", packet_id);
 
                         let received_message = received_packet.read_string().unwrap();
                         let received_position = received_packet.read_byte().unwrap();
@@ -125,6 +130,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                             "{} {} {}",
                             received_message, received_position, received_sender
                         );
+
+                        let chat: Value = serde_json::from_str(&received_message).expect("Couldn't deseralize JSON.");
+                        if chat["translate"] == "chat.type.text"
+                        {
+                        }
                     }
                     0x00 => {
                         //println!("Server Spawn:");
@@ -135,9 +145,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         //println!("{} {} {}", entity_id, object_uuid, entity_type);
                     }
                     0x21 => {
-                        println!("Valid Packet. ID: {}", packet_id);
+                        //println!("Valid Packet. ID: {}", packet_id);
                         let received_keep_alive_long = received_packet.read_long().unwrap();
-                        println!("From server Long: {}", received_keep_alive_long);
+                        //println!("From server Long: {}", received_keep_alive_long);
 
                         let mut keep_alive_packet: Vec<u8> = Vec::new();
                         keep_alive_packet
@@ -220,7 +230,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     0x1A => {
                         let received_disconnect_message = received_packet.read_string().unwrap();
-                        println!("{}", received_disconnect_message);
+                        println!("{}", "You have been disconnected from the server".red());
+
+                        println!(
+                            "{}, {}, {}, {}, {}, {}, and some normal text.",
+                            "Bold".bold(),
+                            "Red".red(),
+                            "Yellow".yellow(),
+                            "Green Strikethrough".green().strikethrough(),
+                            "Blue Underline".blue().underline(),
+                            "Purple Italics".purple().italic()
+                        );
                     }
                     _ => (),
                 }
@@ -269,8 +289,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut _input_command_split = _input_command.split_once(" ");
 
         if let Some((command_type, rest)) = _input_command_split {
-            println!("Command Type: {}", command_type);
-            println!("Rest: {}", rest);
+            //println!("Command Type: {}", command_type);
+            //println!("Rest: {}", rest);
 
             match command_type {
                 "s" => {
@@ -362,7 +382,7 @@ fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>> {
         final_packet.write_varint(compressed_data.len() as i32)?;
         final_packet.write_all(&compressed_data)?;
     } else {
-        println!("Sending uncompressed packet with ID: {}", packet_id);
+        //println!("Sending uncompressed packet with ID: {}", packet_id);
         //println!("size: {}", final_packet.len());
         final_packet.write_varint((packet_id.get_varint_len() + data.len() + 1) as i32)?;
         // println!(
@@ -381,9 +401,9 @@ fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>> {
         //println!("size: {}", final_packet.len());
     }
 
-    for i in &final_packet {
-        print!("{} ", i);
-    }
+    // for i in &final_packet {
+    //     print!("{} ", i);
+    // }
     Ok(final_packet)
 }
 
