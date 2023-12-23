@@ -1,25 +1,24 @@
 use core::time;
+use flate2::read::{self, ZlibDecoder};
+use flate2::write::ZlibEncoder;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
+use std::sync::{Arc, Mutex};
 use std::thread::{self};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{result, vec};
-
-use flate2::read::{self, ZlibDecoder};
-use flate2::write::ZlibEncoder;
 
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
 
 const COMPRESSION_THRESHOLD: i32 = 128;
-
-struct CurrentUserList
-    {
-        online_players_count: i32,
-        online_players_list: Vec<String>
-    }
+#[derive(Clone)]
+struct CurrentUserList {
+    online_players_count: i32,
+    online_players_list: Vec<(i128, String)>,
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut stream = TcpStream::connect("127.0.0.1:25564")?;
@@ -28,11 +27,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let next_state = 2;
 
-    let mut current_player_list = CurrentUserList
-    {
+    let current_player_list = Arc::new(Mutex::new(CurrentUserList {
         online_players_count: 0,
         online_players_list: Vec::new(),
-    };
+    }));
+
+    let current_player_list_clone = Arc::clone(&current_player_list);
+    let current_player_list_clone2 = Arc::clone(&current_player_list);
 
     if next_state == 1 {
         let handshake_packet_state_1 = handshake_serverbound("127.0.0.1", 25565, 1)?;
@@ -78,7 +79,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         let _ = stream.read_byte()?;
         let packet_threshold = stream.read_varint()?;
         println!("[SERVER]: Packet Threshold set to {}.", packet_threshold);
-
 
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
@@ -149,21 +149,73 @@ fn main() -> Result<(), Box<dyn Error>> {
                         send_packet_stream
                             .write_all(&encoded_packet)
                             .expect("Couldnt write packet.");
-
-                       
-
                     }
-                    0x36 =>
-                    {
-                        println!("Valid Packet. ID: {}", packet_id);
-                        let _ = received_packet.read_varint().unwrap();
-                        let online_players = received_packet.read_varint().expect("Couldn't read online_players_count packet.");
+                    0x36 => {
+                        let pack_action =
+                            received_packet.read_varint().expect("Couldn't read action");
+                        let number_of_players = received_packet
+                            .read_varint()
+                            .expect("Coulnd't read number of players");
 
-                        for i in 0..online_players+1
-                        {
+                        let mut current_player_list = current_player_list_clone.lock().unwrap();
 
+                        for j in 0..number_of_players {
+                            let player_uuid = received_packet.read_uuid().unwrap();
+                            match pack_action {
+                                0 => {
+                                    let username = received_packet.read_string().unwrap();
+                                    //ignore
+                                    let no_of_properties = received_packet.read_varint().unwrap();
+                                    for i in 0..no_of_properties {
+                                        received_packet.read_string();
+                                        received_packet.read_string();
+                                        let is_signed = received_packet.read_byte().unwrap();
+                                        if is_signed == 0x01 {
+                                            received_packet.read_string();
+                                        }
+                                    }
+                                    received_packet.read_varint();
+                                    received_packet.read_varint();
+                                    received_packet.read_byte();
+                                    received_packet.read_string();
+                                    //ignore
+
+                                    current_player_list.online_players_count =
+                                        number_of_players + 1;
+                                    if !current_player_list
+                                        .online_players_list
+                                        .iter()
+                                        .any(|&(i, _)| i == player_uuid)
+                                    {
+                                        current_player_list
+                                            .online_players_list
+                                            .push((player_uuid, username));
+                                    }
+                                }
+                                1 => {
+                                    received_packet.read_varint();
+                                }
+                                2 => {
+                                    received_packet.read_varint();
+                                }
+                                3 => {
+                                    received_packet.read_byte();
+                                    received_packet.read_string();
+                                }
+                                4 => {
+                                    current_player_list.online_players_count =
+                                        number_of_players - 1;
+                                    if let Some(pos) = current_player_list
+                                        .online_players_list
+                                        .iter()
+                                        .position(|&(i, _)| i == player_uuid)
+                                    {
+                                        current_player_list.online_players_list.remove(pos);
+                                    }
+                                }
+                                _ => {}
+                            }
                         }
-
                     }
 
                     0x1A => {
@@ -212,23 +264,40 @@ fn main() -> Result<(), Box<dyn Error>> {
             .read_line(&mut _input_command)
             .expect("Couldn't read from console.");
 
-        let mut _input_command_split = _input_command.split(" ");
+        let mut _input_command_split = _input_command.split_once(" ");
 
-        let command_type = _input_command_split
-            .next()
-            .expect("Couldn't go to next iterator");
+        let mut _input_command_split = _input_command.split_once(" ");
 
-        match command_type {
-            "s" => {
-                let mut chat_message_string: Vec<u8> = Vec::new();
-                chat_message_string
-                    .write_string("hello")
-                    .expect("Couldn't write string");
-                let chat_message = encode_packet(0x03, &chat_message_string)
-                    .expect("Couldn't encode chat message");
-                stream.write_all(&chat_message).expect("Couldn't write.");
+        if let Some((command_type, rest)) = _input_command_split {
+            println!("Command Type: {}", command_type);
+            println!("Rest: {}", rest);
+
+            match command_type {
+                "s" => {
+                    let mut chat_message_string: Vec<u8> = Vec::new();
+                    chat_message_string
+                        .write_string(rest)
+                        .expect("Couldn't write string");
+                    let chat_message = encode_packet(0x03, &chat_message_string)
+                        .expect("Couldn't encode chat message");
+                    stream.write_all(&chat_message).expect("Couldn't write.");
+                }
+                "p" => {
+                    let current_player_list = current_player_list_clone2.lock().unwrap();
+                    println!("============================================");
+                    println!(
+                        "======= There are {} players online ========",
+                        current_player_list.clone().online_players_count
+                    );
+                    for i in &current_player_list.clone().online_players_list {
+                        println!("{} {}", i.1, i.0);
+                    }
+                    println!("============================================");
+                }
+                _ => (),
             }
-            _ => {}
+        } else {
+            println!("No input.");
         }
     });
     client_logic.join().unwrap();
@@ -288,7 +357,8 @@ fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>> {
 
         let compressed_data = zlib_encoder.finish()?;
 
-        final_packet.write_varint((compressed_data.len() + packet_id.get_varint_len() + 1) as i32)?;
+        final_packet
+            .write_varint((compressed_data.len() + packet_id.get_varint_len() + 1) as i32)?;
         final_packet.write_varint(compressed_data.len() as i32)?;
         final_packet.write_all(&compressed_data)?;
     } else {
@@ -431,7 +501,7 @@ impl ReadUUID for Vec<u8> {
     fn read_uuid(&mut self) -> io::Result<i128> {
         let mut read_buffer: [u8; 16] = [0; 16];
 
-        for i in 0..15 {
+        for i in 0..16 {
             read_buffer[i] = self.read_byte()? as u8;
         }
         Ok(i128::from_le_bytes(read_buffer))
@@ -563,7 +633,6 @@ impl ReadString for TcpStream {
 
 impl ReadString for Vec<u8> {
     fn read_string(&mut self) -> io::Result<String> {
-        self.read_byte()?;
         let size_to_be_read = self.read_varint()? as usize;
         let mut read_buffer = vec![0; size_to_be_read];
         for i in 0..size_to_be_read {
