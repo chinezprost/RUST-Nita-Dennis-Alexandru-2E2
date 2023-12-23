@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>>
     }
     else 
     {
-        let handshake_packet_state_2 = handshake_serverbound("127.0.0.1", 25565, 2)?;
+        let handshake_packet_state_2 = handshake_serverbound("127.0.0.1", 25564, 2)?;
 
         stream.write_varint(handshake_packet_state_2.len() as i32)?;
         stream.write_all(&handshake_packet_state_2)?;
@@ -80,6 +80,7 @@ fn main() -> Result<(), Box<dyn Error>>
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
         let mut stream_cloned = stream.try_clone()?;
+        let mut send_packet_stream = stream.try_clone()?;
 
         let listen_to_server_thread = thread::spawn
         (
@@ -131,13 +132,39 @@ fn main() -> Result<(), Box<dyn Error>>
 
                                 //println!("{} {} {}", entity_id, object_uuid, entity_type);
                             }
+                        0x21 =>
+                            {
+                                
+                                println!("Valid Packet. ID: {}", packet_id);
+                                let received_keep_alive_long = received_packet.read_long().unwrap();
+                                println!("KeepAlive Long: {}", received_keep_alive_long);
 
-
+                                let mut keep_alive_packet: Vec<u8> = Vec::new();
+                                keep_alive_packet.write_long(received_keep_alive_long).expect("Couldn't write long.");
+                                let encoded_packet = encode_packet(0x0F, &keep_alive_packet).expect("Couldn't encode packet.");
+                                
+                                // send_packet_stream.write_all(&encoded_packet).expect("Couldnt write packet.");
+                                
+                                
+                            }
+                        0x1A =>
+                            {
+                                let received_disconnect_message = received_packet.read_string().unwrap();
+                                println!("{}", received_disconnect_message);
+                            }
                         _ => ()
                     }
                 }
             }
         );
+
+
+        // let heartbeat_thread = thread::spawn
+        // (
+        //     {
+
+        //     }
+        // );
         
 
         //send info packet
@@ -163,20 +190,40 @@ fn main() -> Result<(), Box<dyn Error>>
         //acknowledge the connection
     }
 
+    // send commands loop
+    let client_logic = thread::spawn
+    (move||
+        {
+            loop
+            {
+                let mut _input_command = String::new();
+                io::stdin().read_line(&mut _input_command).expect("Couldn't read from console.");          
+                
+                let mut _input_command_split = _input_command.split(" ");
 
+                let command_type = _input_command_split.next().expect("Couldn't go to next iterator");
 
+                
+                match command_type
+                {
+                    "s"
+                        =>
+                        {
+                            let mut chat_message_string: Vec<u8> = Vec::new();
+                            chat_message_string.write_string("hello").expect("Couldn't write string");
+                            let chat_message = encode_packet(0x03, &chat_message_string).expect("Couldn't encode chat message");
+                            stream.write_all(&chat_message).expect("Couldn't write.");
+                        }
+                    _
+                        =>
+                        {
 
-
-
-
-    
-
-
-
-    loop{}
-
-
-    // listen_to_server_thread.join().unwrap();
+                        }
+                }
+            }
+        }
+    );
+    client_logic.join().unwrap();
     Ok(())
 }
 
@@ -185,14 +232,12 @@ fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>>
     let compressed_packet_length = stream.read_varint()?; // 1
     let data_length = stream.read_varint()?; // 1
 
-    
+    if compressed_packet_length == 0
+    {
+        return Ok(Vec::new())
+    }
 
     let mut final_packet: Vec<u8> = Vec::new();
-
-    if (compressed_packet_length > data_length && data_length != 0) || compressed_packet_length == 0
-    {
-        return Ok(final_packet)
-    }     
 
     if data_length > 0
     {
@@ -229,6 +274,7 @@ fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>>
 
 fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>>
 {
+    println!("Sending compressed packet with ID: {}", packet_id);
     let mut final_packet: Vec<u8> = Vec::new();
     if COMPRESSION_THRESHOLD >= 0 && data.len() as i32 > COMPRESSION_THRESHOLD
     {
@@ -249,21 +295,26 @@ fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>>
     }
     else
     {
-        //println!("size: {}", final_packet.len());
+        println!("Sending uncompressed packet with ID: {}", packet_id);
+        println!("size: {}", final_packet.len());
         final_packet.write_varint((packet_id.get_varint_len() + data.len() + 1) as i32)?;
-        //println!("size: {}", final_packet.len());
+        println!("size: {} {}", final_packet.len(), packet_id.get_varint_len() + data.len() + 1);
 
         final_packet.write_varint(0)?;
-        //println!("size: {}", final_packet.len());
+        println!("size: {}", final_packet.len());
 
         final_packet.write_varint(packet_id)?;
-        //println!("size: {}", final_packet.len());
+        println!("size: {} {}", final_packet.len(), packet_id);
 
         final_packet.write_all(data)?;
-        //println!("size: {}", final_packet.len());
+        println!("size: {}", final_packet.len());
 
     }
 
+    for i in &final_packet
+    {
+        print!("{} ", i);
+    }
     Ok(final_packet)
 }
 
@@ -757,6 +808,20 @@ impl ReadLong for TcpStream
         let mut read_buffer = [0; 8];
         self.read_exact(&mut read_buffer)?;
         
+        Ok(i64::from_be_bytes(read_buffer))
+    }
+}
+
+impl ReadLong for Vec<u8>
+{
+    fn read_long(&mut self) -> io::Result<i64> 
+    {
+        let mut read_buffer:[u8; 8] = [0; 8];
+
+        for i in 0..7
+        {
+            read_buffer[i] = self.read_byte()? as u8;
+        }
         Ok(i64::from_be_bytes(read_buffer))
     }
 }
