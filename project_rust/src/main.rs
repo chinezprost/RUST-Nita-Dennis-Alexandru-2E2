@@ -1,6 +1,8 @@
 use core::time;
+use crossterm::{cursor, execute, terminal, ExecutableCommand};
 use flate2::read::{self, ZlibDecoder};
 use flate2::write::ZlibEncoder;
+use serde_json::{Result, Value};
 use std::borrow::Borrow;
 use std::error::Error;
 use std::io::{self, Read, Write};
@@ -9,7 +11,6 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{result, vec};
-use serde_json::{Result, Value};
 
 use colored::Colorize;
 
@@ -53,7 +54,7 @@ fn main() -> main_result<()> {
         let packet_id = stream.read_varint()?;
         let read_json = stream.read_string()?;
 
-       // println!("{} {} {}", size, packet_id, read_json);
+        // println!("{} {} {}", size, packet_id, read_json);
 
         stream.write_byte(0x09)?;
         stream.write_byte(0x01)?;
@@ -126,14 +127,25 @@ fn main() -> main_result<()> {
                         let received_position = received_packet.read_byte().unwrap();
                         let received_sender = received_packet.read_uuid().unwrap();
 
-                        println!(
-                            "{} {} {}",
-                            received_message, received_position, received_sender
-                        );
+                        // println!(
+                        //     "{} {} {}",
+                        //     received_message, received_position, received_sender
+                        // );
 
-                        let chat: Value = serde_json::from_str(&received_message).expect("Couldn't deseralize JSON.");
-                        if chat["translate"] == "chat.type.text"
-                        {
+                        let json_chat: Value = serde_json::from_str(&received_message)
+                            .expect("Couldn't deseralize JSON.");
+
+                        if json_chat["translate"] == "chat.type.text" {
+                            if let Some(with_partition) = json_chat["with"].as_array() {
+                                if let Some(username_partition) =
+                                    with_partition[0]["insertion"].as_str()
+                                {
+                                    print!("<{}> ", username_partition);
+                                }
+                                if let Some(user_text_partition) = with_partition[1].as_str() {
+                                    println!("{}", user_text_partition);
+                                }
+                            }
                         }
                     }
                     0x00 => {
@@ -227,20 +239,9 @@ fn main() -> main_result<()> {
                             }
                         }
                     }
-
                     0x1A => {
                         let received_disconnect_message = received_packet.read_string().unwrap();
-                        println!("{}", "You have been disconnected from the server".red());
-
-                        println!(
-                            "{}, {}, {}, {}, {}, {}, and some normal text.",
-                            "Bold".bold(),
-                            "Red".red(),
-                            "Yellow".yellow(),
-                            "Green Strikethrough".green().strikethrough(),
-                            "Blue Underline".blue().underline(),
-                            "Purple Italics".purple().italic()
-                        );
+                        println!("{}", "You have been disconnected from the server!".red());
                     }
                     _ => (),
                 }
@@ -283,6 +284,9 @@ fn main() -> main_result<()> {
         io::stdin()
             .read_line(&mut _input_command)
             .expect("Couldn't read from console.");
+
+        io::stdout().execute(cursor::MoveUp(1));
+        io::stdout().execute(terminal::Clear(terminal::ClearType::CurrentLine));
 
         let mut _input_command_split = _input_command.split_once(" ");
 
