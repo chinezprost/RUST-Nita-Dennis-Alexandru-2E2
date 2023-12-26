@@ -1,16 +1,11 @@
-use core::time;
-use std::ptr::null;
-use crossterm::{cursor, execute, terminal, ExecutableCommand};
-use flate2::read::{self, ZlibDecoder};
+use crossterm::{cursor, terminal, ExecutableCommand};
+use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
-use serde_json::{Result, Value};
-use std::borrow::Borrow;
-use std::error::Error;
+use serde_json::Value;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread::{self};
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::{result, vec};
 
 use colored::Colorize;
@@ -18,21 +13,21 @@ use colored::Colorize;
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
 
-const COMPRESSION_THRESHOLD: i32 = 128;
+const COMPRESSION_THRESHOLD: i32 = 128; //default threshold
 #[derive(Clone)]
 struct CurrentUserList {
     online_players_count: i32,
     online_players_list: Vec<(i128, String)>,
 }
 
-type main_result<T> = result::Result<T, Box<dyn std::error::Error>>;
+type MainResult<T> = result::Result<T, Box<dyn std::error::Error>>;
 
-fn main() -> main_result<()> {
+fn main() -> MainResult<()> {
     let mut stream = TcpStream::connect("localhost:25565")?;
 
     // handshake_serverbound("127.0.01", 25565, 2)?;
 
-    let mut next_state = 2;
+    let next_state;
 
     let current_player_list = Arc::new(Mutex::new(CurrentUserList {
         online_players_count: 0,
@@ -41,51 +36,53 @@ fn main() -> main_result<()> {
 
     let current_player_list_clone = Arc::clone(&current_player_list);
     let current_player_list_clone2 = Arc::clone(&current_player_list);
-    
-    println!("{}{}{}", "Welcome to MClient, an Interface Client for Minecraft servers (".bright_yellow(), "server version 1.18.0".red(), ").".bright_yellow());
-    println!("{}{}{}{}{}{}", "Enter [", "stat".bright_cyan(), "] ", "for status check or [", "login username".bright_cyan(), "] for connecting as a player to the server.");
-    
+
+    println!(
+        "{}{}{}",
+        "Welcome to MClient, an Interface Client for Minecraft servers (".bright_yellow(),
+        "server version 1.18.0".red(),
+        ").".bright_yellow()
+    );
+    println!(
+        "Enter [{}] for status check or [{}] for connecting as a player to the server.",
+        "stat".bright_cyan(),
+        "login username".bright_cyan()
+    );
 
     let mut _processed_username = String::new();
-    loop
-    {
+    loop {
         let mut _input = String::new();
         io::stdin().read_line(&mut _input)?;
 
         let _input_word_count = _input.split_ascii_whitespace().count();
 
-        match _input_word_count
-        {
-            1 =>
-            {  
-                if _input.trim().to_lowercase() == "stat"
-                {
+        match _input_word_count {
+            1 => {
+                if _input.trim().to_lowercase() == "stat" {
                     next_state = 1;
                     break;
                 }
             }
-            2 =>
-            {
-                let _split_input = _input.split_once(" ").expect("Couldn't split user input.");
-                if _split_input.0.trim() == "login"
-                {
-                    if _split_input.1.trim().len() > 16
-                    {
-                        println!("{}", "Username should not be longer than 16 characters.".red());
-                    }
-                    else {
+            2 => {
+                let _split_input = _input.split_once(' ').expect("Couldn't split user input.");
+                if _split_input.0.trim() == "login" {
+                    if _split_input.1.trim().len() > 16 {
+                        println!(
+                            "{}",
+                            "Username should not be longer than 16 characters.".red()
+                        );
+                    } else {
                         _processed_username = _split_input.1.trim().to_string();
                         next_state = 2;
                         break;
                     }
-                   
                 }
             }
-            _ => ()
+            _ => (),
         }
         println!("{}", "Invalid input. Try again...".red());
     }
-        
+
     if next_state == 1 {
         let handshake_packet_state_1 = handshake_serverbound("127.0.0.1", 25565, 1)?;
 
@@ -95,17 +92,17 @@ fn main() -> main_result<()> {
         stream.write_byte(0x01)?; // REQUEST STATUS
         stream.write_byte(0x00)?;
 
-        let size = stream.read_varint()?;
-        let packet_id = stream.read_varint()?;
+        let _ = stream.read_varint()?;
+        let _ = stream.read_varint()?;
         let read_json = stream.read_string()?;
 
         stream.write_byte(0x09)?;
         stream.write_byte(0x01)?;
         stream.write_long(111)?;
 
-        let size = stream.read_varint()?;
-        let packed_id = stream.read_byte()?;
-        let response = stream.read_long()?;
+        let _ = stream.read_varint()?;
+        let _ = stream.read_byte()?;
+        let _ = stream.read_long()?;
         let parsed_response: Value = serde_json::from_str(&read_json)?;
 
         let description_text = parsed_response["description"]["text"].as_str().unwrap();
@@ -114,12 +111,12 @@ fn main() -> main_result<()> {
         let version_name = parsed_response["version"]["name"].as_str().unwrap();
         let protocol_id = parsed_response["version"]["protocol"].as_i64().unwrap();
 
-        println!("==================== STATUS ====================");
-        println!("Server Description: {}", description_text);
-        println!("Online Players: [{}/{}]", players_online, players_max);
-        println!("Minecraft Version: {}", version_name);
-        println!("Server Protocol: {}", protocol_id);
-        println!("================================================");
+        println!("{}", "==================== STATUS ====================".bold().blue());
+        println!("{} {}", "Server Description:".yellow(), description_text);
+        println!("{} [{}/{}]","Online Players:".yellow(), players_online, players_max);
+        println!("{} {}","Minecraft Version:".yellow(), version_name);
+        println!("{} {}","Server Protocol:".yellow(), protocol_id);
+        println!("{}", "================================================".bold().blue());
 
         std::process::exit(0);
     } else {
@@ -132,10 +129,6 @@ fn main() -> main_result<()> {
         stream.write_varint(login_start.len() as i32)?;
         stream.write_all(&login_start)?;
 
-        // stream.write_byte(0x17)?;
-        // stream.write_byte(0x00)?;
-        // stream.write_string("dennis", 16)?;
-
         //set-compression packet
         let _ = stream.read_varint()?;
         let _ = stream.read_byte()?;
@@ -145,41 +138,32 @@ fn main() -> main_result<()> {
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
-        let mut stream_cloned = stream.try_clone()?;
+        let stream_cloned = stream.try_clone()?;
         let mut send_packet_stream = stream.try_clone()?;
 
-        let listen_to_server_thread = thread::spawn(move || {
+        let _ = thread::spawn(move || -> Result<(), std::io::Error> {
             let mut has_read_login_succes = false;
             loop {
-                let mut received_packet =
-                    decode_packet(stream_cloned.try_clone().unwrap()).unwrap();
+                let mut received_packet = decode_packet(stream_cloned.try_clone()?)?;
 
-                if received_packet.len() == 0 {
+                if received_packet.is_empty() {
                     continue;
                 }
-                let packet_size = received_packet.read_varint().unwrap();
-                let packet_id = received_packet.read_varint().unwrap();
+                let _ = received_packet.read_varint()?;
+                let packet_id = received_packet.read_varint()?;
 
                 match packet_id {
-                    0x03 => {}
                     0x02 => {
-                        if has_read_login_succes == true {
+                        if has_read_login_succes {
                             continue;
                         }
                         println!("{}", "You've been connected to the server!".green());
                         has_read_login_succes = true;
                     }
                     0x0F => {
-                        //println!("Valid Packet. ID: {}", packet_id);
-
-                        let received_message = received_packet.read_string().unwrap();
-                        let received_position = received_packet.read_byte().unwrap();
-                        let received_sender = received_packet.read_uuid().unwrap();
-
-                        // println!(
-                        //     "{} {} {}",
-                        //     received_message, received_position, received_sender
-                        // );
+                        let received_message = received_packet.read_string()?;
+                        let _ = received_packet.read_byte()?;
+                        let _ = received_packet.read_uuid()?;
 
                         let json_chat: Value = serde_json::from_str(&received_message)
                             .expect("Couldn't deseralize JSON.");
@@ -197,15 +181,8 @@ fn main() -> main_result<()> {
                             }
                         }
                     }
-                    0x00 => {
-                        //println!("Server Spawn:");
-                        let entity_id = received_packet.read_varint().unwrap();
-                        let object_uuid = received_packet.read_uuid().unwrap();
-                        let entity_type = received_packet.read_varint().unwrap();
-
-                    }
                     0x21 => {
-                        let received_keep_alive_long = received_packet.read_long().unwrap();
+                        let received_keep_alive_long = received_packet.read_long()?;
 
                         let mut keep_alive_packet: Vec<u8> = Vec::new();
                         keep_alive_packet
@@ -227,25 +204,25 @@ fn main() -> main_result<()> {
 
                         let mut current_player_list = current_player_list_clone.lock().unwrap();
 
-                        for j in 0..number_of_players {
-                            let player_uuid = received_packet.read_uuid().unwrap();
+                        for _ in 0..number_of_players {
+                            let player_uuid = received_packet.read_uuid()?;
                             match pack_action {
                                 0 => {
-                                    let username = received_packet.read_string().unwrap();
+                                    let username = received_packet.read_string()?;
                                     //ignore
-                                    let no_of_properties = received_packet.read_varint().unwrap();
-                                    for i in 0..no_of_properties {
-                                        received_packet.read_string();
-                                        received_packet.read_string();
+                                    let no_of_properties = received_packet.read_varint()?;
+                                    for _ in 0..no_of_properties {
+                                        received_packet.read_string()?;
+                                        received_packet.read_string()?;
                                         let is_signed = received_packet.read_byte().unwrap();
                                         if is_signed == 0x01 {
-                                            received_packet.read_string();
+                                            received_packet.read_string()?;
                                         }
                                     }
-                                    received_packet.read_varint();
-                                    received_packet.read_varint();
-                                    received_packet.read_byte();
-                                    received_packet.read_string();
+                                    received_packet.read_varint()?;
+                                    received_packet.read_varint()?;
+                                    received_packet.read_byte()?;
+                                    received_packet.read_string()?;
                                     //ignore
 
                                     current_player_list.online_players_count =
@@ -261,14 +238,14 @@ fn main() -> main_result<()> {
                                     }
                                 }
                                 1 => {
-                                    received_packet.read_varint();
+                                    received_packet.read_varint()?;
                                 }
                                 2 => {
-                                    received_packet.read_varint();
+                                    received_packet.read_varint()?;
                                 }
                                 3 => {
-                                    received_packet.read_byte();
-                                    received_packet.read_string();
+                                    received_packet.read_byte()?;
+                                    received_packet.read_string()?;
                                 }
                                 4 => {
                                     current_player_list.online_players_count =
@@ -286,8 +263,9 @@ fn main() -> main_result<()> {
                         }
                     }
                     0x1A => {
-                        let received_disconnect_message = received_packet.read_string().unwrap();
+                        //let received_disconnect_message = received_packet.read_string()?;
                         println!("{}", "You have been disconnected from the server!".red());
+                        std::process::exit(0x00);
                     }
                     _ => (),
                 }
@@ -325,52 +303,54 @@ fn main() -> main_result<()> {
     }
 
     // send commands loop
-    let client_logic = thread::spawn(move || loop {
-        let mut _input_command = String::new();
-        io::stdin()
-            .read_line(&mut _input_command)
-            .expect("Couldn't read from console.");
+    let client_logic = thread::spawn(move || -> Result<(), std::io::Error> {
+        loop {
+            let mut _input_command = String::new();
+            io::stdin()
+                .read_line(&mut _input_command)
+                .expect("Couldn't read from console.");
 
-        io::stdout().execute(cursor::MoveUp(1));
-        io::stdout().execute(terminal::Clear(terminal::ClearType::CurrentLine));
+            io::stdout().execute(cursor::MoveUp(1))?;
+            io::stdout().execute(terminal::Clear(terminal::ClearType::CurrentLine))?;
 
-        let mut _input_command_split = _input_command.split_once(" ");
+            let mut _input_command_split = _input_command.split_once(' ');
 
-        let mut _input_command_split = _input_command.split_once(" ");
+            let mut _input_command_split = _input_command.split_once(' ');
 
-        if let Some((command_type, rest)) = _input_command_split {
-            //println!("Command Type: {}", command_type);
-            //println!("Rest: {}", rest);
+            if let Some((command_type, rest)) = _input_command_split {
+                //println!("Command Type: {}", command_type);
+                //println!("Rest: {}", rest);
 
-            match command_type {
-                "s" => {
-                    let mut chat_message_string: Vec<u8> = Vec::new();
-                    chat_message_string
-                        .write_string(rest)
-                        .expect("Couldn't write string");
-                    let chat_message = encode_packet(0x03, &chat_message_string)
-                        .expect("Couldn't encode chat message");
-                    stream.write_all(&chat_message).expect("Couldn't write.");
-                }
-                "p" => {
-                    let current_player_list = current_player_list_clone2.lock().unwrap();
-                    println!("============================================");
-                    println!(
-                        "======= There are {} players online ========",
-                        current_player_list.clone().online_players_count
-                    );
-                    for i in &current_player_list.clone().online_players_list {
-                        println!("{} {}", i.1, i.0);
+                match command_type {
+                    "s" => {
+                        let mut chat_message_string: Vec<u8> = Vec::new();
+                        chat_message_string
+                            .write_string(rest)
+                            .expect("Couldn't write string");
+                        let chat_message = encode_packet(0x03, &chat_message_string)
+                            .expect("Couldn't encode chat message");
+                        stream.write_all(&chat_message).expect("Couldn't write.");
                     }
-                    println!("============================================");
+                    "p" => {
+                        let current_player_list = current_player_list_clone2.lock().unwrap();
+                        println!("============================================");
+                        println!(
+                            "======= There are {} players online ========",
+                            current_player_list.clone().online_players_count
+                        );
+                        for i in &current_player_list.clone().online_players_list {
+                            println!("{} {}", i.1, i.0);
+                        }
+                        println!("============================================");
+                    }
+                    _ => (),
                 }
-                _ => (),
+            } else {
+                println!("No input.");
             }
-        } else {
-            println!("No input.");
         }
     });
-    client_logic.join().unwrap();
+    client_logic.join().unwrap()?;
     Ok(())
 }
 
@@ -400,6 +380,7 @@ fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>> {
             }
             Err(err) => {
                 eprintln!("Error decompressing data: {:?}", err);
+                return Err(err);
             }
         }
     } else {
@@ -410,10 +391,10 @@ fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>> {
         stream.read_exact(&mut uncompressed_data)?;
         final_packet.extend_from_slice(&uncompressed_data);
     }
-    return Ok(final_packet);
+    Ok(final_packet)
 }
 
-fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>> {
+fn encode_packet(packet_id: i32, data: &[u8]) -> io::Result<Vec<u8>> {
     //println!("Sending compressed packet with ID: {}", packet_id);
     let mut final_packet: Vec<u8> = Vec::new();
     if COMPRESSION_THRESHOLD >= 0 && data.len() as i32 > COMPRESSION_THRESHOLD {
@@ -451,9 +432,6 @@ fn encode_packet(mut packet_id: i32, mut data: &[u8]) -> io::Result<Vec<u8>> {
         //println!("size: {}", final_packet.len());
     }
 
-    // for i in &final_packet {
-    //     print!("{} ", i);
-    // }
     Ok(final_packet)
 }
 
@@ -471,7 +449,7 @@ fn handshake_serverbound(_address: &str, _port: u16, _state: i32) -> io::Result<
 
 fn login_start_serverbound(_username: &str) -> io::Result<Vec<u8>> {
     let mut formed_packet = Vec::new();
-    if _username.len() > 16 || _username.len() == 0 {
+    if _username.len() > 16 || _username.is_empty() {
         println!("Invalid username.");
     }
     formed_packet.write_byte(0x00)?;
@@ -491,15 +469,13 @@ impl VarIntLength for i32 {
         let mut varint_length = 0;
         let mut value = *self;
         loop {
-            varint_length = varint_length + 1;
-
+            varint_length += 1;
             value >>= 7;
-
             if value == 0 {
                 break;
             }
         }
-        return varint_length;
+        varint_length
     }
 }
 
@@ -571,8 +547,8 @@ impl ReadUUID for Vec<u8> {
     fn read_uuid(&mut self) -> io::Result<i128> {
         let mut read_buffer: [u8; 16] = [0; 16];
 
-        for i in 0..16 {
-            read_buffer[i] = self.read_byte()? as u8;
+        for i in &mut read_buffer {
+            *i = self.read_byte()? as u8;
         }
         Ok(i128::from_le_bytes(read_buffer))
     }
@@ -633,7 +609,7 @@ impl ReadVarInt for TcpStream {
 
         loop {
             current_octet = self.read_byte()? as u8;
-            value |= (i32::from(SEGMENT_BITS as u8 & current_octet) << position) as i32;
+            value |= i32::from(SEGMENT_BITS as u8 & current_octet) << position;
 
             if (current_octet & CONTINUE_BIT as u8) == 0 {
                 break;
@@ -656,7 +632,7 @@ impl ReadVarInt for Vec<u8> {
 
         loop {
             current_octet = self.read_byte()? as u8;
-            value |= (i32::from(SEGMENT_BITS as u8 & current_octet) << position) as i32;
+            value |= i32::from(SEGMENT_BITS as u8 & current_octet) << position;
 
             if (current_octet & CONTINUE_BIT as u8) == 0 {
                 break;
@@ -705,8 +681,8 @@ impl ReadString for Vec<u8> {
     fn read_string(&mut self) -> io::Result<String> {
         let size_to_be_read = self.read_varint()? as usize;
         let mut read_buffer = vec![0; size_to_be_read];
-        for i in 0..size_to_be_read {
-            read_buffer[i] = self.read_byte()? as u8;
+        for i in read_buffer.iter_mut().take(size_to_be_read) {
+            *i = self.read_byte()? as u8;
         }
         let result = String::from_utf8(read_buffer);
         Ok(result.unwrap())
@@ -790,7 +766,7 @@ impl WriteByte for Vec<u8> {
 impl ReadByte for TcpStream {
     fn read_byte(&mut self) -> io::Result<i8> {
         let mut read_buffer = [0; 1];
-        self.read(&mut read_buffer)?;
+        self.read_exact(&mut read_buffer)?;
         Ok(read_buffer[0].to_le() as i8)
     }
 }
@@ -798,7 +774,7 @@ impl ReadByte for TcpStream {
 impl ReadByte for Vec<u8> {
     fn read_byte(&mut self) -> io::Result<i8> {
         let mut result: i8 = 0;
-        if self.len() > 0 {
+        if !self.is_empty() {
             result = self.remove(0) as i8;
         }
         Ok(result)
@@ -850,8 +826,8 @@ impl ReadLong for Vec<u8> {
     fn read_long(&mut self) -> io::Result<i64> {
         let mut read_buffer: [u8; 8] = [0; 8];
 
-        for i in 0..8 {
-            read_buffer[i] = self.read_byte()? as u8;
+        for i in &mut read_buffer {
+            *i = self.read_byte()? as u8;
         }
         Ok(i64::from_be_bytes(read_buffer))
     }
