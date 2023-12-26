@@ -1,4 +1,5 @@
 use core::time;
+use std::ptr::null;
 use crossterm::{cursor, execute, terminal, ExecutableCommand};
 use flate2::read::{self, ZlibDecoder};
 use flate2::write::ZlibEncoder;
@@ -31,7 +32,7 @@ fn main() -> main_result<()> {
 
     // handshake_serverbound("127.0.01", 25565, 2)?;
 
-    let next_state = 2;
+    let mut next_state = 2;
 
     let current_player_list = Arc::new(Mutex::new(CurrentUserList {
         online_players_count: 0,
@@ -40,7 +41,51 @@ fn main() -> main_result<()> {
 
     let current_player_list_clone = Arc::clone(&current_player_list);
     let current_player_list_clone2 = Arc::clone(&current_player_list);
+    
+    println!("{}{}{}", "Welcome to MClient, an Interface Client for Minecraft servers (".bright_yellow(), "server version 1.18.0".red(), ").".bright_yellow());
+    println!("{}{}{}{}{}{}", "Enter [", "stat".bright_cyan(), "] ", "for status check or [", "login username".bright_cyan(), "] for connecting as a player to the server.");
+    
 
+    let mut _processed_username = String::new();
+    loop
+    {
+        let mut _input = String::new();
+        io::stdin().read_line(&mut _input)?;
+
+        let _input_word_count = _input.split_ascii_whitespace().count();
+
+        match _input_word_count
+        {
+            1 =>
+            {  
+                if _input.trim().to_lowercase() == "stat"
+                {
+                    next_state = 1;
+                    break;
+                }
+            }
+            2 =>
+            {
+                let _split_input = _input.split_once(" ").expect("Couldn't split user input.");
+                if _split_input.0.trim() == "login"
+                {
+                    if _split_input.1.trim().len() > 16
+                    {
+                        println!("{}", "Username should not be longer than 16 characters.".red());
+                    }
+                    else {
+                        _processed_username = _split_input.1.trim().to_string();
+                        next_state = 2;
+                        break;
+                    }
+                   
+                }
+            }
+            _ => ()
+        }
+        println!("{}", "Invalid input. Try again...".red());
+    }
+        
     if next_state == 1 {
         let handshake_packet_state_1 = handshake_serverbound("127.0.0.1", 25565, 1)?;
 
@@ -54,8 +99,6 @@ fn main() -> main_result<()> {
         let packet_id = stream.read_varint()?;
         let read_json = stream.read_string()?;
 
-        // println!("{} {} {}", size, packet_id, read_json);
-
         stream.write_byte(0x09)?;
         stream.write_byte(0x01)?;
         stream.write_long(111)?;
@@ -63,16 +106,29 @@ fn main() -> main_result<()> {
         let size = stream.read_varint()?;
         let packed_id = stream.read_byte()?;
         let response = stream.read_long()?;
+        let parsed_response: Value = serde_json::from_str(&read_json)?;
 
-        //println!("{} {} {}", size, packed_id, response);
-        println!("end status");
+        let description_text = parsed_response["description"]["text"].as_str().unwrap();
+        let players_max = parsed_response["players"]["max"].as_i64().unwrap();
+        let players_online = parsed_response["players"]["online"].as_i64().unwrap();
+        let version_name = parsed_response["version"]["name"].as_str().unwrap();
+        let protocol_id = parsed_response["version"]["protocol"].as_i64().unwrap();
+
+        println!("==================== STATUS ====================");
+        println!("Server Description: {}", description_text);
+        println!("Online Players: [{}/{}]", players_online, players_max);
+        println!("Minecraft Version: {}", version_name);
+        println!("Server Protocol: {}", protocol_id);
+        println!("================================================");
+
+        std::process::exit(0);
     } else {
         let handshake_packet_state_2 = handshake_serverbound("127.0.0.1", 25564, 2)?;
 
         stream.write_varint(handshake_packet_state_2.len() as i32)?;
         stream.write_all(&handshake_packet_state_2)?;
 
-        let login_start = login_start_serverbound("dennis")?;
+        let login_start = login_start_serverbound(&_processed_username)?;
         stream.write_varint(login_start.len() as i32)?;
         stream.write_all(&login_start)?;
 
@@ -110,13 +166,6 @@ fn main() -> main_result<()> {
                         if has_read_login_succes == true {
                             continue;
                         }
-                        //println!("Valid Packet. ID: {}", packet_id);
-                        let received_uuid = received_packet.read_uuid().unwrap();
-                        let received_username = received_packet.read_string().unwrap();
-                        // println!(
-                        //     "{} {} {} {}",
-                        //     packet_size, packet_id, received_uuid, received_username
-                        // );
                         println!("{}", "You've been connected to the server!".green());
                         has_read_login_succes = true;
                     }
@@ -154,12 +203,9 @@ fn main() -> main_result<()> {
                         let object_uuid = received_packet.read_uuid().unwrap();
                         let entity_type = received_packet.read_varint().unwrap();
 
-                        //println!("{} {} {}", entity_id, object_uuid, entity_type);
                     }
                     0x21 => {
-                        //println!("Valid Packet. ID: {}", packet_id);
                         let received_keep_alive_long = received_packet.read_long().unwrap();
-                        //println!("From server Long: {}", received_keep_alive_long);
 
                         let mut keep_alive_packet: Vec<u8> = Vec::new();
                         keep_alive_packet
