@@ -8,10 +8,15 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self};
 use std::{result, vec};
 
-use colored::Colorize;
+
+use colored::*;
+
 
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
+
+const IPV4_ADRESS: &str = "localhost";
+const PORT: i16 = 25565;
 
 const COMPRESSION_THRESHOLD: i32 = 128; //default threshold
 #[derive(Clone)]
@@ -20,17 +25,36 @@ struct CurrentUserList {
     online_players_list: Vec<(i128, String)>,
 }
 
+struct Printed {
+    bold: bool,
+    italic: bool,
+    underlined: bool,
+    strikethrough: bool,
+    color: String,
+}
+
 type MainResult<T> = result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> MainResult<()> {
-    let mut stream = TcpStream::connect("localhost:25565")?;
+    let mut stream: TcpStream;
+    println!("Trying to connect to {}:{} ...", IPV4_ADRESS, PORT);
+    if let Ok(_stream) = TcpStream::connect(format!("{}:{}", IPV4_ADRESS, PORT)) {
+        println!(
+            "{}",
+            "Connected succesfully to the specified server!".green()
+        );
+        stream = _stream;
+    } else {
+        println!("{}", "Couldn't connect to server! Exiting...".red());
+        std::process::exit(0);
+    }
 
     // handshake_serverbound("127.0.01", 25565, 2)?;
 
     let next_state;
 
     let current_player_list = Arc::new(Mutex::new(CurrentUserList {
-        online_players_count: 0,
+        online_players_count: -1,
         online_players_list: Vec::new(),
     }));
 
@@ -111,12 +135,27 @@ fn main() -> MainResult<()> {
         let version_name = parsed_response["version"]["name"].as_str().unwrap();
         let protocol_id = parsed_response["version"]["protocol"].as_i64().unwrap();
 
-        println!("{}", "==================== STATUS ====================".bold().blue());
+        println!(
+            "{}",
+            "==================== STATUS ===================="
+                .bold()
+                .blue()
+        );
         println!("{} {}", "Server Description:".yellow(), description_text);
-        println!("{} [{}/{}]","Online Players:".yellow(), players_online, players_max);
-        println!("{} {}","Minecraft Version:".yellow(), version_name);
-        println!("{} {}","Server Protocol:".yellow(), protocol_id);
-        println!("{}", "================================================".bold().blue());
+        println!(
+            "{} [{}/{}]",
+            "Online Players:".yellow(),
+            players_online,
+            players_max
+        );
+        println!("{} {}", "Minecraft Version:".yellow(), version_name);
+        println!("{} {}", "Server Protocol:".yellow(), protocol_id);
+        println!(
+            "{}",
+            "================================================"
+                .bold()
+                .blue()
+        );
 
         std::process::exit(0);
     } else {
@@ -132,8 +171,8 @@ fn main() -> MainResult<()> {
         //set-compression packet
         let _ = stream.read_varint()?;
         let _ = stream.read_byte()?;
-        let packet_threshold = stream.read_varint()?;
-        println!("[SERVER]: Packet Threshold set to {}!", packet_threshold);
+        let _ = stream.read_varint()?;
+        //println!("[SERVER]: Packet Threshold set to {}!", packet_threshold);
 
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
@@ -157,11 +196,21 @@ fn main() -> MainResult<()> {
                         if has_read_login_succes {
                             continue;
                         }
-                        println!("{}", "You've been connected to the server!".green());
+                        println!(
+                            "{} {}",
+                            "You've joined the game as user:".bright_green(),
+                            _processed_username.white()
+                        );
+                        println!(
+                            "Type {} for chat, {} to see online players.",
+                            "[s <text>]".cyan(),
+                            "[players]".cyan()
+                        );
                         has_read_login_succes = true;
                     }
                     0x0F => {
                         let received_message = received_packet.read_string()?;
+                        println!("{}", received_message);
                         let _ = received_packet.read_byte()?;
                         let _ = received_packet.read_uuid()?;
 
@@ -180,6 +229,75 @@ fn main() -> MainResult<()> {
                                 }
                             }
                         }
+                        else if json_chat["translate"] == "chat.type.announcement"
+                        {
+
+                        }
+                        else if json_chat["translate"] == "commands.message.display.incoming"
+                        {
+                            
+                        }
+                        else 
+                        {
+                            if let Some(properties) = json_chat["extra"].as_array()
+                            {
+                                for property in properties
+                                {/w 
+                                    let mut message = ColoredString::from(property["text"].as_str().unwrap());
+                                    if let Some(_) = property["bold"].as_bool()
+                                    {
+                                        message = message.bold();
+                                    }
+
+                                    if let Some(_) = property["strikethrough"].as_bool()
+                                    {
+                                        message = message.strikethrough();
+                                    }
+
+                                    if let Some(_) = property["italic"].as_bool()
+                                    {
+                                        message = message.italic();
+
+                                    }
+
+                                    if let Some(_) = property["underlined"].as_bool()
+                                    {
+                                        message = message.underline();
+                                    }
+
+                                    if let Some(value) = property["color"].as_str()
+                                    {
+                                        match value
+                                        {
+                                            "black" => { message = message.custom_color(CustomColor { r: (0), g: (0), b: (0) })}
+                                            "dark_blue" => { message = message.custom_color(CustomColor { r: (0), g: (0), b: (170) })}
+                                            "dark_green" => { message = message.custom_color(CustomColor { r: (0), g: (170), b: (0) })}
+                                            "dark_aqua" => { message = message.custom_color(CustomColor { r: (0), g: (170), b: (170) })}
+                                            "dark_red" => { message = message.custom_color(CustomColor { r: (170), g: (0), b: (0) })}
+                                            "dark_purple" => { message = message.custom_color(CustomColor { r: (170), g: (0), b: (170) })}
+                                            "gold" => { message = message.custom_color(CustomColor { r: (255), g: (170), b: (0) })}
+                                            "gray" => { message = message.custom_color(CustomColor { r: (170), g: (170), b: (170) })}
+                                            "dark_gray" => { message = message.custom_color(CustomColor { r: (85), g: (85), b: (85) })}
+                                            "blue" => { message = message.custom_color(CustomColor { r: (85), g: (85), b: (255) })}
+                                            "green" => { message = message.custom_color(CustomColor { r: (85), g: (255), b: (85) })}
+                                            "aqua" => { message = message.custom_color(CustomColor { r: (85), g: (255), b: (255) })}
+                                            "red" => { message = message.custom_color(CustomColor { r: (255), g: (85), b: (85) })}
+                                            "light_purple" => { message = message.custom_color(CustomColor { r: (255), g: (85), b: (255) })}
+                                            "yellow" => { message = message.custom_color(CustomColor { r: (255), g: (255), b: (85) })}
+                                            "white" => { message = message.custom_color(CustomColor { r: (255), g: (255), b: (255) })}
+                                            _ => ()
+                                        }
+                                    }
+
+                                    print!("{}", message);
+                                }
+                            }
+                            println!("");
+
+                            
+                        }
+
+                        
                     }
                     0x21 => {
                         let received_keep_alive_long = received_packet.read_long()?;
@@ -317,36 +435,55 @@ fn main() -> MainResult<()> {
 
             let mut _input_command_split = _input_command.split_once(' ');
 
-            if let Some((command_type, rest)) = _input_command_split {
-                //println!("Command Type: {}", command_type);
-                //println!("Rest: {}", rest);
+            let _command_count = _input_command.split(' ').count();
 
-                match command_type {
-                    "s" => {
-                        let mut chat_message_string: Vec<u8> = Vec::new();
-                        chat_message_string
-                            .write_string(rest)
-                            .expect("Couldn't write string");
-                        let chat_message = encode_packet(0x03, &chat_message_string)
-                            .expect("Couldn't encode chat message");
-                        stream.write_all(&chat_message).expect("Couldn't write.");
-                    }
-                    "p" => {
-                        let current_player_list = current_player_list_clone2.lock().unwrap();
-                        println!("============================================");
-                        println!(
-                            "======= There are {} players online ========",
-                            current_player_list.clone().online_players_count
-                        );
-                        for i in &current_player_list.clone().online_players_list {
-                            println!("{} {}", i.1, i.0);
+            match _command_count {
+                1 => {
+                    let command_type = _input_command.trim();
+                    match command_type {
+                        "players" => {
+                            let current_player_list = current_player_list_clone2.lock().unwrap();
+                            println!(
+                                "{}",
+                                "============================================".bold().cyan()
+                            );
+                            println!(
+                                "{} {} {}",
+                                "======= There are".cyan(),
+                                current_player_list.clone().online_players_count,
+                                "players online! ========".cyan()
+                            );
+                            let mut count = 1;
+                            for i in &current_player_list.clone().online_players_list {
+                                println!("{}. {}", count, i.1);
+                                count += 1;
+                            }
+                            println!(
+                                "{}",
+                                "============================================".bold().cyan()
+                            );
                         }
-                        println!("============================================");
+                        _ => (),
                     }
-                    _ => (),
                 }
-            } else {
-                println!("No input.");
+                2 => {
+                    if let Some((_command_type, _command_args)) = _input_command.split_once(' ') {
+                        match _command_type {
+                            "s" => {
+                                let mut chat_message_string: Vec<u8> = Vec::new();
+                                chat_message_string
+                                    .write_string(_command_args)
+                                    .expect("Couldn't write string");
+                                let chat_message = encode_packet(0x03, &chat_message_string)
+                                    .expect("Couldn't encode chat message");
+                                stream.write_all(&chat_message).expect("Couldn't write.");
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+
+                _ => {}
             }
         }
     });
