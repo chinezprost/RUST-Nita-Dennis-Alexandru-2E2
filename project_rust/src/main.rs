@@ -231,18 +231,31 @@ fn main() -> MainResult<()> {
                         }
                         else if json_chat["translate"] == "chat.type.announcement"
                         {
-
+                            println!("announcement failed");
                         }
                         else if json_chat["translate"] == "commands.message.display.incoming"
                         {
-                            
+                            if let Some(with_partition) = json_chat["with"].as_array() {
+                                if let Some(username_partition) =
+                                    with_partition[0]["insertion"].as_str()
+                                {
+                                    print!("{} {}", username_partition.custom_color(CustomColor { r: (128), g: (128), b: (128) }), "whispers to you: ".custom_color(CustomColor { r: (128), g: (128), b: (128) }));
+                                }
+                                if let Some(user_text_partition) = with_partition[1]["text"].as_str() {
+                                    println!(" {}", user_text_partition.custom_color(CustomColor { r: (128), g: (128), b: (128) }));
+                                }
+                            }
+                        }
+                        else if json_chat["extra"] == "command.unknown.command"
+                        {
+                            println!("{}", "Unknown command!".red());
                         }
                         else 
                         {
                             if let Some(properties) = json_chat["extra"].as_array()
                             {
                                 for property in properties
-                                {/w 
+                                {
                                     let mut message = ColoredString::from(property["text"].as_str().unwrap());
                                     if let Some(_) = property["bold"].as_bool()
                                     {
@@ -466,21 +479,21 @@ fn main() -> MainResult<()> {
                         _ => (),
                     }
                 }
-                2 => {
-                    if let Some((_command_type, _command_args)) = _input_command.split_once(' ') {
-                        match _command_type {
-                            "s" => {
-                                let mut chat_message_string: Vec<u8> = Vec::new();
-                                chat_message_string
-                                    .write_string(_command_args)
-                                    .expect("Couldn't write string");
-                                let chat_message = encode_packet(0x03, &chat_message_string)
-                                    .expect("Couldn't encode chat message");
-                                stream.write_all(&chat_message).expect("Couldn't write.");
-                            }
-                            _ => (),
-                        }
-                    }
+                _ => {
+                    // if let x = _input_command.split(' ') {
+                    //     match x.next() {
+                    //         "s" => {
+                    //             let mut chat_message_string: Vec<u8> = Vec::new();
+                    //             chat_message_string
+                    //                 .write_string(&x.collect::<Vec<&str>>().join(" "))
+                    //                 .expect("Couldn't write string");
+                    //             let chat_message = encode_packet(0x03, &chat_message_string)
+                    //                 .expect("Couldn't encode chat message");
+                    //             stream.write_all(&chat_message).expect("Couldn't write.");
+                    //         }
+                    //         _ => (),
+                    //     }
+                    // }
                 }
 
                 _ => {}
