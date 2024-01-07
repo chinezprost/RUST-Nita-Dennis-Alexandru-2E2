@@ -8,13 +8,12 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self};
 use std::{result, vec};
 
-
 use colored::*;
-
 
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
 
+const IPV4_ADRESS_TEST: &str = "bmc.mc-complex.com";
 const IPV4_ADRESS: &str = "localhost";
 const PORT: i16 = 25565;
 
@@ -23,14 +22,6 @@ const COMPRESSION_THRESHOLD: i32 = 128; //default threshold
 struct CurrentUserList {
     online_players_count: i32,
     online_players_list: Vec<(i128, String)>,
-}
-
-struct Printed {
-    bold: bool,
-    italic: bool,
-    underlined: bool,
-    strikethrough: bool,
-    color: String,
 }
 
 type MainResult<T> = result::Result<T, Box<dyn std::error::Error>>;
@@ -210,107 +201,216 @@ fn main() -> MainResult<()> {
                     }
                     0x0F => {
                         let received_message = received_packet.read_string()?;
-                        println!("{}", received_message);
+                        //println!("{}", received_message);
                         let _ = received_packet.read_byte()?;
                         let _ = received_packet.read_uuid()?;
 
                         let json_chat: Value = serde_json::from_str(&received_message)
                             .expect("Couldn't deseralize JSON.");
 
-                        if json_chat["translate"] == "chat.type.text" {
-                            if let Some(with_partition) = json_chat["with"].as_array() {
-                                if let Some(username_partition) =
-                                    with_partition[0]["insertion"].as_str()
-                                {
-                                    print!("<{}> ", username_partition);
-                                }
-                                if let Some(user_text_partition) = with_partition[1].as_str() {
-                                    println!("{}", user_text_partition);
-                                }
-                            }
-                        }
-                        else if json_chat["translate"] == "chat.type.announcement"
-                        {
-                            println!("announcement failed");
-                        }
-                        else if json_chat["translate"] == "commands.message.display.incoming"
-                        {
-                            if let Some(with_partition) = json_chat["with"].as_array() {
-                                if let Some(username_partition) =
-                                    with_partition[0]["insertion"].as_str()
-                                {
-                                    print!("{} {}", username_partition.custom_color(CustomColor { r: (128), g: (128), b: (128) }), "whispers to you: ".custom_color(CustomColor { r: (128), g: (128), b: (128) }));
-                                }
-                                if let Some(user_text_partition) = with_partition[1]["text"].as_str() {
-                                    println!(" {}", user_text_partition.custom_color(CustomColor { r: (128), g: (128), b: (128) }));
-                                }
-                            }
-                        }
-                        else if json_chat["extra"] == "command.unknown.command"
-                        {
-                            println!("{}", "Unknown command!".red());
-                        }
-                        else 
-                        {
-                            if let Some(properties) = json_chat["extra"].as_array()
-                            {
-                                for property in properties
-                                {
-                                    let mut message = ColoredString::from(property["text"].as_str().unwrap());
-                                    if let Some(_) = property["bold"].as_bool()
-                                    {
-                                        message = message.bold();
-                                    }
+                        // testing
 
-                                    if let Some(_) = property["strikethrough"].as_bool()
+                        let is_translate = &json_chat["translate"];
+                        match is_translate.as_str() {
+                            Some("chat.type.text") => {
+                                if let Some(with_partition) = json_chat["with"].as_array() {
+                                    if let Some(sent_user) = with_partition[0]["insertion"].as_str()
                                     {
-                                        message = message.strikethrough();
-                                    }
-
-                                    if let Some(_) = property["italic"].as_bool()
-                                    {
-                                        message = message.italic();
-
-                                    }
-
-                                    if let Some(_) = property["underlined"].as_bool()
-                                    {
-                                        message = message.underline();
-                                    }
-
-                                    if let Some(value) = property["color"].as_str()
-                                    {
-                                        match value
-                                        {
-                                            "black" => { message = message.custom_color(CustomColor { r: (0), g: (0), b: (0) })}
-                                            "dark_blue" => { message = message.custom_color(CustomColor { r: (0), g: (0), b: (170) })}
-                                            "dark_green" => { message = message.custom_color(CustomColor { r: (0), g: (170), b: (0) })}
-                                            "dark_aqua" => { message = message.custom_color(CustomColor { r: (0), g: (170), b: (170) })}
-                                            "dark_red" => { message = message.custom_color(CustomColor { r: (170), g: (0), b: (0) })}
-                                            "dark_purple" => { message = message.custom_color(CustomColor { r: (170), g: (0), b: (170) })}
-                                            "gold" => { message = message.custom_color(CustomColor { r: (255), g: (170), b: (0) })}
-                                            "gray" => { message = message.custom_color(CustomColor { r: (170), g: (170), b: (170) })}
-                                            "dark_gray" => { message = message.custom_color(CustomColor { r: (85), g: (85), b: (85) })}
-                                            "blue" => { message = message.custom_color(CustomColor { r: (85), g: (85), b: (255) })}
-                                            "green" => { message = message.custom_color(CustomColor { r: (85), g: (255), b: (85) })}
-                                            "aqua" => { message = message.custom_color(CustomColor { r: (85), g: (255), b: (255) })}
-                                            "red" => { message = message.custom_color(CustomColor { r: (255), g: (85), b: (85) })}
-                                            "light_purple" => { message = message.custom_color(CustomColor { r: (255), g: (85), b: (255) })}
-                                            "yellow" => { message = message.custom_color(CustomColor { r: (255), g: (255), b: (85) })}
-                                            "white" => { message = message.custom_color(CustomColor { r: (255), g: (255), b: (255) })}
-                                            _ => ()
+                                        if let Some(sent_message) = with_partition[1].as_str() {
+                                            println!("<{}> {}", sent_user, sent_message);
                                         }
                                     }
-
-                                    print!("{}", message);
                                 }
                             }
-                            println!("");
-
-                            
+                            Some("chat.type.announcement") => {
+                                if let Some(with_partition) = json_chat["with"].as_array() {
+                                    if let Some(sender) = with_partition[0]["text"].as_str() {
+                                        if let Some(message) = with_partition[1]["text"].as_str() {
+                                            println!("[{}] {}", sender, message);
+                                        }
+                                    }
+                                }
+                            }
+                            Some("commands.message.display.incoming") => {
+                                if let Some(with_partition) = json_chat["with"].as_array() {
+                                    if let Some(username_partition) =
+                                        with_partition[0]["insertion"].as_str()
+                                    {
+                                        print!(
+                                            "{} {}",
+                                            username_partition.custom_color(CustomColor {
+                                                r: (128),
+                                                g: (128),
+                                                b: (128)
+                                            }),
+                                            "whispers to you: ".custom_color(CustomColor {
+                                                r: (128),
+                                                g: (128),
+                                                b: (128)
+                                            })
+                                        );
+                                    }
+                                    if let Some(user_text_partition) =
+                                        with_partition[1]["text"].as_str()
+                                    {
+                                        println!(
+                                            " {}",
+                                            user_text_partition.custom_color(CustomColor {
+                                                r: (128),
+                                                g: (128),
+                                                b: (128)
+                                            })
+                                        );
+                                    }
+                                }
+                            }
+                            _ => (),
                         }
+                        // testing
 
-                        
+                        if json_chat["extra"] == "command.unknown.command" {
+                            println!("{}", "Unknown command!".red());
+                        } else if let Some(properties) = json_chat["extra"].as_array() {
+                            for property in properties {
+                                let mut message =
+                                    ColoredString::from(property["text"].as_str().unwrap());
+                                if property["bold"].as_bool().is_some() {
+                                    message = message.bold();
+                                }
+
+                                if property["strikethrough"].as_bool().is_some() {
+                                    message = message.strikethrough();
+                                }
+
+                                if property["italic"].as_bool().is_some() {
+                                    message = message.italic();
+                                }
+
+                                if property["underlined"].as_bool().is_some() {
+                                    message = message.underline();
+                                }
+
+                                if let Some(value) = property["color"].as_str() {
+                                    match value {
+                                        "black" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (0),
+                                                g: (0),
+                                                b: (0),
+                                            })
+                                        }
+                                        "dark_blue" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (0),
+                                                g: (0),
+                                                b: (170),
+                                            })
+                                        }
+                                        "dark_green" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (0),
+                                                g: (170),
+                                                b: (0),
+                                            })
+                                        }
+                                        "dark_aqua" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (0),
+                                                g: (170),
+                                                b: (170),
+                                            })
+                                        }
+                                        "dark_red" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (170),
+                                                g: (0),
+                                                b: (0),
+                                            })
+                                        }
+                                        "dark_purple" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (170),
+                                                g: (0),
+                                                b: (170),
+                                            })
+                                        }
+                                        "gold" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (255),
+                                                g: (170),
+                                                b: (0),
+                                            })
+                                        }
+                                        "gray" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (170),
+                                                g: (170),
+                                                b: (170),
+                                            })
+                                        }
+                                        "dark_gray" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (85),
+                                                g: (85),
+                                                b: (85),
+                                            })
+                                        }
+                                        "blue" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (85),
+                                                g: (85),
+                                                b: (255),
+                                            })
+                                        }
+                                        "green" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (85),
+                                                g: (255),
+                                                b: (85),
+                                            })
+                                        }
+                                        "aqua" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (85),
+                                                g: (255),
+                                                b: (255),
+                                            })
+                                        }
+                                        "red" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (255),
+                                                g: (85),
+                                                b: (85),
+                                            })
+                                        }
+                                        "light_purple" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (255),
+                                                g: (85),
+                                                b: (255),
+                                            })
+                                        }
+                                        "yellow" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (255),
+                                                g: (255),
+                                                b: (85),
+                                            })
+                                        }
+                                        "white" => {
+                                            message = message.custom_color(CustomColor {
+                                                r: (255),
+                                                g: (255),
+                                                b: (255),
+                                            })
+                                        }
+                                        _ => (),
+                                    }
+                                }
+
+                                print!("{}", message);
+                            }
+                        }
                     }
                     0x21 => {
                         let received_keep_alive_long = received_packet.read_long()?;
@@ -402,35 +502,6 @@ fn main() -> MainResult<()> {
                 }
             }
         });
-
-        // let heartbeat_thread = thread::spawn
-        // (
-        //     {
-
-        //     }
-        // );
-
-        //send info packet
-        // let mut client_settings_packet: Vec<u8> = Vec::new();
-        // client_settings_packet.write_string("en_GB")?;
-        // client_settings_packet.write_byte(8)?;
-        // client_settings_packet.write_varint(0x00)?;
-        // client_settings_packet.write_byte(0x01)?;
-        // client_settings_packet.write_byte(0x01)?;
-        // client_settings_packet.write_varint(0x01)?;
-        // client_settings_packet.write_byte(0x00)?;
-        // client_settings_packet.write_byte(0x01)?;
-
-        // let client_settings_encoded_packet = encode_packet(0x05, &client_settings_packet)?;
-        // stream.write_all(&client_settings_encoded_packet)?;
-        //end send info packet
-
-        // let mut chat_message_string: Vec<u8> = Vec::new();
-        // chat_message_string.write_string("hello")?;
-        // let chat_message = encode_packet(0x03, &chat_message_string)?;
-
-        // stream.write_all(&chat_message)?;
-        //acknowledge the connection
     }
 
     // send commands loop
@@ -446,57 +517,43 @@ fn main() -> MainResult<()> {
 
             let mut _input_command_split = _input_command.split_once(' ');
 
-            let mut _input_command_split = _input_command.split_once(' ');
-
             let _command_count = _input_command.split(' ').count();
 
             match _command_count {
                 1 => {
                     let command_type = _input_command.trim();
-                    match command_type {
-                        "players" => {
-                            let current_player_list = current_player_list_clone2.lock().unwrap();
-                            println!(
-                                "{}",
-                                "============================================".bold().cyan()
-                            );
-                            println!(
-                                "{} {} {}",
-                                "======= There are".cyan(),
-                                current_player_list.clone().online_players_count,
-                                "players online! ========".cyan()
-                            );
-                            let mut count = 1;
-                            for i in &current_player_list.clone().online_players_list {
-                                println!("{}. {}", count, i.1);
-                                count += 1;
-                            }
-                            println!(
-                                "{}",
-                                "============================================".bold().cyan()
-                            );
+                    if command_type == "players" {
+                        let current_player_list = current_player_list_clone2.lock().unwrap();
+                        println!(
+                            "{}",
+                            "============================================".bold().cyan()
+                        );
+                        println!(
+                            "{} {} {}",
+                            "======= There are".cyan(),
+                            current_player_list.clone().online_players_count,
+                            "players online! ========".cyan()
+                        );
+                        let mut count = 1;
+                        for i in &current_player_list.clone().online_players_list {
+                            println!("{}. {}", count, i.1);
+                            count += 1;
                         }
-                        _ => (),
+                        println!(
+                            "{}",
+                            "============================================".bold().cyan()
+                        );
                     }
                 }
                 _ => {
-                    // if let x = _input_command.split(' ') {
-                    //     match x.next() {
-                    //         "s" => {
-                    //             let mut chat_message_string: Vec<u8> = Vec::new();
-                    //             chat_message_string
-                    //                 .write_string(&x.collect::<Vec<&str>>().join(" "))
-                    //                 .expect("Couldn't write string");
-                    //             let chat_message = encode_packet(0x03, &chat_message_string)
-                    //                 .expect("Couldn't encode chat message");
-                    //             stream.write_all(&chat_message).expect("Couldn't write.");
-                    //         }
-                    //         _ => (),
-                    //     }
-                    // }
+                    let command_type = _input_command_split.unwrap().0;
+                    if command_type == "s" {
+                        let mut chat_message_array = Vec::new();
+                        chat_message_array.write_string(_input_command_split.unwrap().1)?;
+                        let chat_message = encode_packet(0x03, &chat_message_array)?;
+                        stream.write_all(&chat_message)?;
+                    }
                 }
-
-                _ => {}
             }
         }
     });
