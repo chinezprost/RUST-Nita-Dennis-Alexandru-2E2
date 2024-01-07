@@ -282,19 +282,19 @@ fn main() -> MainResult<()> {
                                 if let Some(x) = property["text"].as_str() {
                                     let mut message = ColoredString::from(x);
 
-                                    if let Some(_) = property["bold"].as_bool() {
+                                    if property["bold"].as_bool().is_some() {
                                         message = message.bold();
                                     }
 
-                                    if let Some(_) = property["strikethrough"].as_bool() {
+                                    if property["strikethrough"].as_bool().is_some() {
                                         message = message.strikethrough();
                                     }
 
-                                    if let Some(_) = property["italic"].as_bool() {
+                                    if property["italic"].as_bool().is_some() {
                                         message = message.italic();
                                     }
 
-                                    if let Some(_) = property["underlined"].as_bool() {
+                                    if property["underlined"].as_bool().is_some() {
                                         message = message.underline();
                                     }
 
@@ -543,9 +543,7 @@ fn main() -> MainResult<()> {
                             "======= There are".cyan(),
                             current_player_list
                                 .clone()
-                                .online_players_list
-                                .iter()
-                                .count(),
+                                .online_players_list.len(),
                             "players online! ========".cyan()
                         );
                         let mut count = 1;
