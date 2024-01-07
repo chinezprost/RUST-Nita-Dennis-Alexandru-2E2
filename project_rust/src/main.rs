@@ -13,7 +13,7 @@ use colored::*;
 const SEGMENT_BITS: i32 = 0b0111_1111;
 const CONTINUE_BIT: i32 = 0b1000_0000;
 
-const IPV4_ADRESS_TEST: &str = "bmc.mc-complex.com";
+//const IPV4_ADRESS_TEST: &str = "bmc.mc-complex.com";
 const IPV4_ADRESS: &str = "localhost";
 const PORT: i16 = 25565;
 
@@ -268,148 +268,158 @@ fn main() -> MainResult<()> {
                         }
                         // testing
 
-                        if json_chat["extra"] == "command.unknown.command" {
-                            println!("{}", "Unknown command!".red());
-                        } else if let Some(properties) = json_chat["extra"].as_array() {
+                        // if let Some(array) = json_chat["extra"].as_array()
+                        // {
+                        //     if let Some(string) = array[0].as_str()
+                        //     {
+                        //         if string == "command.unknown.command"
+                        //         {
+                        //             println!("{}", "Unknown command!".red());
+                        //         }
+                        //     }
+                        if let Some(properties) = json_chat["extra"].as_array() {
                             for property in properties {
-                                let mut message =
-                                    ColoredString::from(property["text"].as_str().unwrap());
-                                if property["bold"].as_bool().is_some() {
-                                    message = message.bold();
-                                }
+                                if let Some(x) = property["text"].as_str() {
+                                    let mut message = ColoredString::from(x);
 
-                                if property["strikethrough"].as_bool().is_some() {
-                                    message = message.strikethrough();
-                                }
-
-                                if property["italic"].as_bool().is_some() {
-                                    message = message.italic();
-                                }
-
-                                if property["underlined"].as_bool().is_some() {
-                                    message = message.underline();
-                                }
-
-                                if let Some(value) = property["color"].as_str() {
-                                    match value {
-                                        "black" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (0),
-                                                g: (0),
-                                                b: (0),
-                                            })
-                                        }
-                                        "dark_blue" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (0),
-                                                g: (0),
-                                                b: (170),
-                                            })
-                                        }
-                                        "dark_green" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (0),
-                                                g: (170),
-                                                b: (0),
-                                            })
-                                        }
-                                        "dark_aqua" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (0),
-                                                g: (170),
-                                                b: (170),
-                                            })
-                                        }
-                                        "dark_red" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (170),
-                                                g: (0),
-                                                b: (0),
-                                            })
-                                        }
-                                        "dark_purple" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (170),
-                                                g: (0),
-                                                b: (170),
-                                            })
-                                        }
-                                        "gold" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (255),
-                                                g: (170),
-                                                b: (0),
-                                            })
-                                        }
-                                        "gray" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (170),
-                                                g: (170),
-                                                b: (170),
-                                            })
-                                        }
-                                        "dark_gray" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (85),
-                                                g: (85),
-                                                b: (85),
-                                            })
-                                        }
-                                        "blue" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (85),
-                                                g: (85),
-                                                b: (255),
-                                            })
-                                        }
-                                        "green" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (85),
-                                                g: (255),
-                                                b: (85),
-                                            })
-                                        }
-                                        "aqua" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (85),
-                                                g: (255),
-                                                b: (255),
-                                            })
-                                        }
-                                        "red" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (255),
-                                                g: (85),
-                                                b: (85),
-                                            })
-                                        }
-                                        "light_purple" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (255),
-                                                g: (85),
-                                                b: (255),
-                                            })
-                                        }
-                                        "yellow" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (255),
-                                                g: (255),
-                                                b: (85),
-                                            })
-                                        }
-                                        "white" => {
-                                            message = message.custom_color(CustomColor {
-                                                r: (255),
-                                                g: (255),
-                                                b: (255),
-                                            })
-                                        }
-                                        _ => (),
+                                    if let Some(_) = property["bold"].as_bool() {
+                                        message = message.bold();
                                     }
-                                }
 
-                                print!("{}", message);
+                                    if let Some(_) = property["strikethrough"].as_bool() {
+                                        message = message.strikethrough();
+                                    }
+
+                                    if let Some(_) = property["italic"].as_bool() {
+                                        message = message.italic();
+                                    }
+
+                                    if let Some(_) = property["underlined"].as_bool() {
+                                        message = message.underline();
+                                    }
+
+                                    if let Some(value) = property["color"].as_str() {
+                                        match value {
+                                            "black" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (0),
+                                                    g: (0),
+                                                    b: (0),
+                                                })
+                                            }
+                                            "dark_blue" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (0),
+                                                    g: (0),
+                                                    b: (170),
+                                                })
+                                            }
+                                            "dark_green" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (0),
+                                                    g: (170),
+                                                    b: (0),
+                                                })
+                                            }
+                                            "dark_aqua" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (0),
+                                                    g: (170),
+                                                    b: (170),
+                                                })
+                                            }
+                                            "dark_red" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (170),
+                                                    g: (0),
+                                                    b: (0),
+                                                })
+                                            }
+                                            "dark_purple" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (170),
+                                                    g: (0),
+                                                    b: (170),
+                                                })
+                                            }
+                                            "gold" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (255),
+                                                    g: (170),
+                                                    b: (0),
+                                                })
+                                            }
+                                            "gray" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (170),
+                                                    g: (170),
+                                                    b: (170),
+                                                })
+                                            }
+                                            "dark_gray" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (85),
+                                                    g: (85),
+                                                    b: (85),
+                                                })
+                                            }
+                                            "blue" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (85),
+                                                    g: (85),
+                                                    b: (255),
+                                                })
+                                            }
+                                            "green" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (85),
+                                                    g: (255),
+                                                    b: (85),
+                                                })
+                                            }
+                                            "aqua" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (85),
+                                                    g: (255),
+                                                    b: (255),
+                                                })
+                                            }
+                                            "red" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (255),
+                                                    g: (85),
+                                                    b: (85),
+                                                })
+                                            }
+                                            "light_purple" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (255),
+                                                    g: (85),
+                                                    b: (255),
+                                                })
+                                            }
+                                            "yellow" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (255),
+                                                    g: (255),
+                                                    b: (85),
+                                                })
+                                            }
+                                            "white" => {
+                                                message = message.custom_color(CustomColor {
+                                                    r: (255),
+                                                    g: (255),
+                                                    b: (255),
+                                                })
+                                            }
+                                            _ => (),
+                                        }
+                                    }
+
+                                    print!("{}", message);
+                                }
                             }
+                            println!();
                         }
                     }
                     0x21 => {
@@ -531,7 +541,11 @@ fn main() -> MainResult<()> {
                         println!(
                             "{} {} {}",
                             "======= There are".cyan(),
-                            current_player_list.clone().online_players_count,
+                            current_player_list
+                                .clone()
+                                .online_players_list
+                                .iter()
+                                .count(),
                             "players online! ========".cyan()
                         );
                         let mut count = 1;
