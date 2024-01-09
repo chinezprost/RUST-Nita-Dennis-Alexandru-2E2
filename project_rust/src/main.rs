@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use crossterm::{cursor, terminal, ExecutableCommand};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
@@ -8,7 +9,6 @@ use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread::{self};
 use std::{result, vec};
-use base64::{Engine as _, engine::general_purpose};
 
 use colored::*;
 
@@ -122,23 +122,25 @@ fn main() -> MainResult<()> {
         let _ = stream.read_long()?;
         let parsed_response: Value = serde_json::from_str(&read_json)?;
 
-        let description_text = parsed_response["description"]["text"].as_str()?;
-        let players_max = parsed_response["players"]["max"].as_i64().unwrap();
-        let players_online = parsed_response["players"]["online"].as_i64().unwrap();
-        let version_name = parsed_response["version"]["name"].as_str().unwrap();
-        let protocol_id = parsed_response["version"]["protocol"].as_i64().unwrap();
+        let description_text = parsed_response["description"]["text"].as_str().expect("Can't read [\"description\"][\"text\"] from status packet.");
+        let players_max = parsed_response["players"]["max"].as_i64().expect("Can't read [\"players\"][\"max\"] from status packet.");
+        let players_online = parsed_response["players"]["online"].as_i64().expect("Can't read [\"players\"][\"online\"] from status packet.");
+        let version_name = parsed_response["version"]["name"].as_str().expect("Can't read [\"version\"][\"name\"] from status packet.");
+        let protocol_id = parsed_response["version"]["protocol"].as_i64().expect("Can't read [\"version\"][\"protocol\"] from status packet.");
 
-        if let Some(mut favicon) = parsed_response["favicon"].as_str()
-        {
+        if let Some(mut favicon) = parsed_response["favicon"].as_str() {
             let favicon_m: String = favicon.chars().skip(22).collect();
             favicon = favicon_m.as_str();
             //println!("{}", favicon);
-            let decoded_image = general_purpose::STANDARD.decode(favicon).unwrap();
+            let decoded_image = general_purpose::STANDARD.decode(favicon).expect("Couldn't decode image from Base64.");
             let external_file = File::create("server-icon.png");
-            match external_file
-            {
-                Ok(mut result) => {result.write_all(&decoded_image)?; },
-                Err(e) => {eprintln!("{}", e); }
+            match external_file {
+                Ok(mut result) => {
+                    result.write_all(&decoded_image)?;
+                }
+                Err(e) => {
+                    eprintln!("{}", e);
+                }
             }
         }
 
@@ -280,54 +282,52 @@ fn main() -> MainResult<()> {
                                     }
                                 }
                             }
-                            Some("multiplayer.player.joined") =>
-                            {
-                                if let Some(with_partition) = json_chat["with"].as_array()
-                                {
-                                    if let Some(user) = with_partition[0]["text"].as_str()
-                                    {
-                                        println!("{} {}", ColoredString::from(user).custom_color(CustomColor {
-                                            r: (255),
-                                            g: (255),
-                                            b: (85),
-                                        }), "joined the game".custom_color(CustomColor {
-                                            r: (255),
-                                            g: (255),
-                                            b: (85),
-                                        }));
+                            Some("multiplayer.player.joined") => {
+                                if let Some(with_partition) = json_chat["with"].as_array() {
+                                    if let Some(user) = with_partition[0]["text"].as_str() {
+                                        println!(
+                                            "{} {}",
+                                            ColoredString::from(user).custom_color(CustomColor {
+                                                r: (255),
+                                                g: (255),
+                                                b: (85),
+                                            }),
+                                            "joined the game".custom_color(CustomColor {
+                                                r: (255),
+                                                g: (255),
+                                                b: (85),
+                                            })
+                                        );
                                     }
                                 }
                             }
-                            Some("multiplayer.player.left") =>
-                            {
-                                if let Some(with_partition) = json_chat["with"].as_array()
-                                {
-                                    if let Some(user) = with_partition[0]["text"].as_str()
-                                    {
-                                        println!("{} {}", ColoredString::from(user).custom_color(CustomColor {
-                                            r: (255),
-                                            g: (255),
-                                            b: (85),
-                                        }), "left the game".custom_color(CustomColor {
-                                            r: (255),
-                                            g: (255),
-                                            b: (85),
-                                        }));
+                            Some("multiplayer.player.left") => {
+                                if let Some(with_partition) = json_chat["with"].as_array() {
+                                    if let Some(user) = with_partition[0]["text"].as_str() {
+                                        println!(
+                                            "{} {}",
+                                            ColoredString::from(user).custom_color(CustomColor {
+                                                r: (255),
+                                                g: (255),
+                                                b: (85),
+                                            }),
+                                            "left the game".custom_color(CustomColor {
+                                                r: (255),
+                                                g: (255),
+                                                b: (85),
+                                            })
+                                        );
                                     }
                                 }
                             }
-                            _ => ()
+                            _ => (),
                         }
 
-                        if is_translate.as_str().is_some()
-                        {
+                        if is_translate.as_str().is_some() {
                             let result = is_translate.as_str().unwrap();
-                            if String::from(result).contains("death")
-                            {
-                                if let Some(with_partition) = json_chat["with"].as_array()
-                                {
-                                    if let Some(death_user) = with_partition[0]["text"].as_str()
-                                    {
+                            if String::from(result).contains("death") {
+                                if let Some(with_partition) = json_chat["with"].as_array() {
+                                    if let Some(death_user) = with_partition[0]["text"].as_str() {
                                         println!("{} has died!", death_user);
                                     }
                                 }
@@ -627,18 +627,19 @@ fn main() -> MainResult<()> {
                     }
                 }
                 _ => {
-                    let command_type = _input_command_split.unwrap().0;
-                    if command_type == "s" {
-                        let mut chat_message_array = Vec::new();
-                        chat_message_array.write_string(_input_command_split.unwrap().1)?;
-                        let chat_message = encode_packet(0x03, &chat_message_array)?;
-                        stream.write_all(&chat_message)?;
+                    if let Some(command_type) = _input_command_split {
+                        if command_type.0 == "s" {
+                            let mut chat_message_array = Vec::new();
+                            chat_message_array.write_string(_input_command_split.unwrap().1)?;
+                            let chat_message = encode_packet(0x03, &chat_message_array)?;
+                            stream.write_all(&chat_message)?;
+                        }
                     }
                 }
             }
         }
     });
-    client_logic.join().unwrap()?;
+    client_logic.join().expect("Couldn't join client_logic thread.")?;
     Ok(())
 }
 
@@ -960,8 +961,8 @@ impl ReadString for TcpStream {
         let size_to_be_read = self.read_varint()? as usize;
         let mut read_buffer = vec![0; size_to_be_read];
         let _ = self.read_exact(&mut read_buffer);
-        let result = String::from_utf8(read_buffer);
-        Ok(result.unwrap())
+        let result = String::from_utf8(read_buffer).expect("Couldn't convert to String.");
+        Ok(result)
     }
 }
 
@@ -972,8 +973,8 @@ impl ReadString for Vec<u8> {
         for i in read_buffer.iter_mut().take(size_to_be_read) {
             *i = self.read_byte()? as u8;
         }
-        let result = String::from_utf8(read_buffer);
-        Ok(result.unwrap())
+        let result = String::from_utf8(read_buffer).expect("Couldn't convert to String.");
+        Ok(result)
     }
 }
 
@@ -1127,8 +1128,8 @@ impl ReadJSONString for TcpStream {
     fn read_json_string(&mut self, _length: usize) -> io::Result<String> {
         let mut read_buffer = vec![0; 8];
         let _ = self.read_exact(&mut read_buffer);
-        let result = String::from_utf8(read_buffer);
-        Ok(result.unwrap())
+        let result = String::from_utf8(read_buffer).expect("Couldn't Read JSON String from TCPStream.");
+        Ok(result)
     }
 }
 
