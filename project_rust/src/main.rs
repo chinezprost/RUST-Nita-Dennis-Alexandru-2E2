@@ -264,7 +264,58 @@ fn main() -> MainResult<()> {
                                     }
                                 }
                             }
-                            _ => (),
+                            Some("multiplayer.player.joined") =>
+                            {
+                                if let Some(with_partition) = json_chat["with"].as_array()
+                                {
+                                    if let Some(user) = with_partition[0]["text"].as_str()
+                                    {
+                                        println!("{} {}", ColoredString::from(user).custom_color(CustomColor {
+                                            r: (255),
+                                            g: (255),
+                                            b: (85),
+                                        }), "joined the game".custom_color(CustomColor {
+                                            r: (255),
+                                            g: (255),
+                                            b: (85),
+                                        }));
+                                    }
+                                }
+                            }
+                            Some("multiplayer.player.left") =>
+                            {
+                                if let Some(with_partition) = json_chat["with"].as_array()
+                                {
+                                    if let Some(user) = with_partition[0]["text"].as_str()
+                                    {
+                                        println!("{} {}", ColoredString::from(user).custom_color(CustomColor {
+                                            r: (255),
+                                            g: (255),
+                                            b: (85),
+                                        }), "left the game".custom_color(CustomColor {
+                                            r: (255),
+                                            g: (255),
+                                            b: (85),
+                                        }));
+                                    }
+                                }
+                            }
+                            _ => ()
+                        }
+
+                        if is_translate.as_str().is_some()
+                        {
+                            let result = is_translate.as_str().unwrap();
+                            if String::from(result).contains("death")
+                            {
+                                if let Some(with_partition) = json_chat["with"].as_array()
+                                {
+                                    if let Some(death_user) = with_partition[0]["text"].as_str()
+                                    {
+                                        println!("{} has died!", death_user);
+                                    }
+                                }
+                            }
                         }
                         // testing
 
@@ -277,6 +328,7 @@ fn main() -> MainResult<()> {
                         //             println!("{}", "Unknown command!".red());
                         //         }
                         //     }
+
                         if let Some(properties) = json_chat["extra"].as_array() {
                             for property in properties {
                                 if let Some(x) = property["text"].as_str() {
@@ -541,9 +593,7 @@ fn main() -> MainResult<()> {
                         println!(
                             "{} {} {}",
                             "======= There are".cyan(),
-                            current_player_list
-                                .clone()
-                                .online_players_list.len(),
+                            current_player_list.clone().online_players_list.len(),
                             "players online! ========".cyan()
                         );
                         let mut count = 1;
@@ -555,6 +605,9 @@ fn main() -> MainResult<()> {
                             "{}",
                             "============================================".bold().cyan()
                         );
+                    } else if command_type == "quit" {
+                        println!("{}", "You have been disconnected from the server!".red());
+                        std::process::exit(0);
                     }
                 }
                 _ => {
