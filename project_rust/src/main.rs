@@ -2,11 +2,13 @@ use crossterm::{cursor, terminal, ExecutableCommand};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use serde_json::Value;
+use std::fs::File;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread::{self};
 use std::{result, vec};
+use base64::{Engine as _, engine::general_purpose};
 
 use colored::*;
 
@@ -120,11 +122,25 @@ fn main() -> MainResult<()> {
         let _ = stream.read_long()?;
         let parsed_response: Value = serde_json::from_str(&read_json)?;
 
-        let description_text = parsed_response["description"]["text"].as_str().unwrap();
+        let description_text = parsed_response["description"]["text"].as_str()?;
         let players_max = parsed_response["players"]["max"].as_i64().unwrap();
         let players_online = parsed_response["players"]["online"].as_i64().unwrap();
         let version_name = parsed_response["version"]["name"].as_str().unwrap();
         let protocol_id = parsed_response["version"]["protocol"].as_i64().unwrap();
+
+        if let Some(mut favicon) = parsed_response["favicon"].as_str()
+        {
+            let favicon_m: String = favicon.chars().skip(22).collect();
+            favicon = favicon_m.as_str();
+            //println!("{}", favicon);
+            let decoded_image = general_purpose::STANDARD.decode(favicon).unwrap();
+            let external_file = File::create("server-icon.png");
+            match external_file
+            {
+                Ok(mut result) => {result.write_all(&decoded_image)?; },
+                Err(e) => {eprintln!("{}", e); }
+            }
+        }
 
         println!(
             "{}",
