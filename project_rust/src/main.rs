@@ -19,7 +19,6 @@ const CONTINUE_BIT: i32 = 0b1000_0000;
 const IPV4_ADRESS: &str = "localhost";
 const PORT: i16 = 25565;
 
-const COMPRESSION_THRESHOLD: i32 = 128; //default threshold
 #[derive(Clone)]
 struct CurrentUserList {
     online_players_count: i32,
@@ -122,11 +121,21 @@ fn main() -> MainResult<()> {
         let _ = stream.read_long()?;
         let parsed_response: Value = serde_json::from_str(&read_json)?;
 
-        let description_text = parsed_response["description"]["text"].as_str().ok_or("Can't read [\"description\"][\"text\"] from status packet.")?;
-        let players_max = parsed_response["players"]["max"].as_i64().ok_or("Can't read [\"players\"][\"max\"] from status packet.")?;
-        let players_online = parsed_response["players"]["online"].as_i64().ok_or("Can't read [\"players\"][\"online\"] from status packet.")?;
-        let version_name = parsed_response["version"]["name"].as_str().ok_or("Can't read [\"version\"][\"name\"] from status packet.")?;
-        let protocol_id = parsed_response["version"]["protocol"].as_i64().ok_or("Can't read [\"version\"][\"protocol\"] from status packet.")?;
+        let description_text = parsed_response["description"]["text"]
+            .as_str()
+            .ok_or("Can't read [\"description\"][\"text\"] from status packet.")?;
+        let players_max = parsed_response["players"]["max"]
+            .as_i64()
+            .ok_or("Can't read [\"players\"][\"max\"] from status packet.")?;
+        let players_online = parsed_response["players"]["online"]
+            .as_i64()
+            .ok_or("Can't read [\"players\"][\"online\"] from status packet.")?;
+        let version_name = parsed_response["version"]["name"]
+            .as_str()
+            .ok_or("Can't read [\"version\"][\"name\"] from status packet.")?;
+        let protocol_id = parsed_response["version"]["protocol"]
+            .as_i64()
+            .ok_or("Can't read [\"version\"][\"protocol\"] from status packet.")?;
 
         if let Some(mut favicon) = parsed_response["favicon"].as_str() {
             let favicon_m: String = favicon.chars().skip(22).collect();
@@ -180,8 +189,13 @@ fn main() -> MainResult<()> {
         //set-compression packet
         let _ = stream.read_varint()?;
         let _ = stream.read_byte()?;
-        let _ = stream.read_varint()?;
-        //println!("[SERVER]: Packet Threshold set to {}!", packet_threshold);
+        let packet_threshold = stream.read_varint()?;
+        println!(
+            "{} {}{}",
+            "[SERVER]: Packet Threshold set to".blue().bold(),
+            packet_threshold,
+            "!".blue().bold()
+        );
 
         // FROM NOW ON PACKETS ARE COMPRESSED
         // FROM NOW ON PACKETS ARE COMPRESSED
@@ -322,7 +336,7 @@ fn main() -> MainResult<()> {
                             _ => (),
                         }
 
-                        if let Some(x) = is_translate.as_str(){
+                        if let Some(x) = is_translate.as_str() {
                             if String::from(x).contains("death") {
                                 if let Some(with_partition) = json_chat["with"].as_array() {
                                     if let Some(death_user) = with_partition[0]["text"].as_str() {
@@ -485,25 +499,28 @@ fn main() -> MainResult<()> {
                                     print!("{}", message);
                                 }
                             }
-                            println!();
+
+                            if let Some(x) = properties[0]["translate"].as_str()
+                            {
+                                if x == "command.unknown.command" {
+                                                                   println!("{}", "You have entered an invalid or incomplete command!".red());
+                                   }
+                            }
                         }
                     }
                     0x21 => {
                         let received_keep_alive_long = received_packet.read_long()?;
 
                         let mut keep_alive_packet: Vec<u8> = Vec::new();
-                        keep_alive_packet
-                            .write_long(received_keep_alive_long)?;
-                        let encoded_packet = encode_packet(0x0F, &keep_alive_packet)?;
+                        keep_alive_packet.write_long(received_keep_alive_long)?;
+                        let encoded_packet =
+                            encode_packet(0x0F, &keep_alive_packet, packet_threshold)?;
 
-                        send_packet_stream
-                            .write_all(&encoded_packet)?;
+                        send_packet_stream.write_all(&encoded_packet)?;
                     }
                     0x36 => {
-                        let pack_action =
-                            received_packet.read_varint()?;
-                        let number_of_players = received_packet
-                            .read_varint()?;
+                        let pack_action = received_packet.read_varint()?;
+                        let number_of_players = received_packet.read_varint()?;
 
                         let mut current_player_list = current_player_list_clone.lock().unwrap();
 
@@ -580,8 +597,7 @@ fn main() -> MainResult<()> {
     let client_logic = thread::spawn(move || -> Result<(), std::io::Error> {
         loop {
             let mut _input_command = String::new();
-            io::stdin()
-                .read_line(&mut _input_command)?;
+            io::stdin().read_line(&mut _input_command)?;
 
             io::stdout().execute(cursor::MoveUp(1))?;
             io::stdout().execute(terminal::Clear(terminal::ClearType::CurrentLine))?;
@@ -624,7 +640,7 @@ fn main() -> MainResult<()> {
                         if command_type.0 == "s" {
                             let mut chat_message_array = Vec::new();
                             chat_message_array.write_string(command_type.1)?;
-                            let chat_message = encode_packet(0x03, &chat_message_array)?;
+                            let chat_message = encode_packet(0x03, &chat_message_array, 128)?;
                             stream.write_all(&chat_message)?;
                         }
                     }
@@ -632,7 +648,9 @@ fn main() -> MainResult<()> {
             }
         }
     });
-    client_logic.join().expect("Couldn't join client_logic thread.")?;
+    client_logic
+        .join()
+        .expect("Couldn't join client_logic thread.")?;
     Ok(())
 }
 
@@ -676,10 +694,10 @@ fn decode_packet(mut stream: TcpStream) -> io::Result<Vec<u8>> {
     Ok(final_packet)
 }
 
-fn encode_packet(packet_id: i32, data: &[u8]) -> io::Result<Vec<u8>> {
+fn encode_packet(packet_id: i32, data: &[u8], compression_threshold: i32) -> io::Result<Vec<u8>> {
     //println!("Sending compressed packet with ID: {}", packet_id);
     let mut final_packet: Vec<u8> = Vec::new();
-    if COMPRESSION_THRESHOLD >= 0 && data.len() as i32 > COMPRESSION_THRESHOLD {
+    if compression_threshold >= 0 && data.len() as i32 > compression_threshold {
         let mut zlib_encoder = ZlibEncoder::new(Vec::new(), Default::default());
 
         let mut packet_id_as_vec = Vec::new();
@@ -1121,7 +1139,8 @@ impl ReadJSONString for TcpStream {
     fn read_json_string(&mut self, _length: usize) -> io::Result<String> {
         let mut read_buffer = vec![0; 8];
         let _ = self.read_exact(&mut read_buffer);
-        let result = String::from_utf8(read_buffer).expect("Couldn't Read JSON String from TCPStream.");
+        let result =
+            String::from_utf8(read_buffer).expect("Couldn't Read JSON String from TCPStream.");
         Ok(result)
     }
 }
