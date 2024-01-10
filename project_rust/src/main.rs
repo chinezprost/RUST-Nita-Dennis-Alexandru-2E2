@@ -81,7 +81,7 @@ fn main() -> MainResult<()> {
                 }
             }
             2 => {
-                let _split_input = _input.split_once(' ').expect("Couldn't split user input.");
+                let _split_input = _input.split_once(' ').ok_or("Couldn't split input.")?;
                 if _split_input.0.trim() == "login" {
                     if _split_input.1.trim().len() > 16 {
                         println!(
@@ -122,17 +122,17 @@ fn main() -> MainResult<()> {
         let _ = stream.read_long()?;
         let parsed_response: Value = serde_json::from_str(&read_json)?;
 
-        let description_text = parsed_response["description"]["text"].as_str().expect("Can't read [\"description\"][\"text\"] from status packet.");
-        let players_max = parsed_response["players"]["max"].as_i64().expect("Can't read [\"players\"][\"max\"] from status packet.");
-        let players_online = parsed_response["players"]["online"].as_i64().expect("Can't read [\"players\"][\"online\"] from status packet.");
-        let version_name = parsed_response["version"]["name"].as_str().expect("Can't read [\"version\"][\"name\"] from status packet.");
-        let protocol_id = parsed_response["version"]["protocol"].as_i64().expect("Can't read [\"version\"][\"protocol\"] from status packet.");
+        let description_text = parsed_response["description"]["text"].as_str().ok_or("Can't read [\"description\"][\"text\"] from status packet.")?;
+        let players_max = parsed_response["players"]["max"].as_i64().ok_or("Can't read [\"players\"][\"max\"] from status packet.")?;
+        let players_online = parsed_response["players"]["online"].as_i64().ok_or("Can't read [\"players\"][\"online\"] from status packet.")?;
+        let version_name = parsed_response["version"]["name"].as_str().ok_or("Can't read [\"version\"][\"name\"] from status packet.")?;
+        let protocol_id = parsed_response["version"]["protocol"].as_i64().ok_or("Can't read [\"version\"][\"protocol\"] from status packet.")?;
 
         if let Some(mut favicon) = parsed_response["favicon"].as_str() {
             let favicon_m: String = favicon.chars().skip(22).collect();
             favicon = favicon_m.as_str();
             //println!("{}", favicon);
-            let decoded_image = general_purpose::STANDARD.decode(favicon).expect("Couldn't decode image from Base64.");
+            let decoded_image = general_purpose::STANDARD.decode(favicon)?;
             let external_file = File::create("server-icon.png");
             match external_file {
                 Ok(mut result) => {
@@ -223,8 +223,7 @@ fn main() -> MainResult<()> {
                         let _ = received_packet.read_byte()?;
                         let _ = received_packet.read_uuid()?;
 
-                        let json_chat: Value = serde_json::from_str(&received_message)
-                            .expect("Couldn't deseralize JSON.");
+                        let json_chat: Value = serde_json::from_str(&received_message)?;
 
                         // testing
 
@@ -323,9 +322,8 @@ fn main() -> MainResult<()> {
                             _ => (),
                         }
 
-                        if is_translate.as_str().is_some() {
-                            let result = is_translate.as_str().unwrap();
-                            if String::from(result).contains("death") {
+                        if let Some(x) = is_translate.as_str(){
+                            if String::from(x).contains("death") {
                                 if let Some(with_partition) = json_chat["with"].as_array() {
                                     if let Some(death_user) = with_partition[0]["text"].as_str() {
                                         println!("{} has died!", death_user);
@@ -495,21 +493,17 @@ fn main() -> MainResult<()> {
 
                         let mut keep_alive_packet: Vec<u8> = Vec::new();
                         keep_alive_packet
-                            .write_long(received_keep_alive_long)
-                            .expect("Couldn't write long.");
-                        let encoded_packet = encode_packet(0x0F, &keep_alive_packet)
-                            .expect("Couldn't encode packet.");
+                            .write_long(received_keep_alive_long)?;
+                        let encoded_packet = encode_packet(0x0F, &keep_alive_packet)?;
 
                         send_packet_stream
-                            .write_all(&encoded_packet)
-                            .expect("Couldnt write packet.");
+                            .write_all(&encoded_packet)?;
                     }
                     0x36 => {
                         let pack_action =
-                            received_packet.read_varint().expect("Couldn't read action");
+                            received_packet.read_varint()?;
                         let number_of_players = received_packet
-                            .read_varint()
-                            .expect("Coulnd't read number of players");
+                            .read_varint()?;
 
                         let mut current_player_list = current_player_list_clone.lock().unwrap();
 
@@ -523,7 +517,7 @@ fn main() -> MainResult<()> {
                                     for _ in 0..no_of_properties {
                                         received_packet.read_string()?;
                                         received_packet.read_string()?;
-                                        let is_signed = received_packet.read_byte().unwrap();
+                                        let is_signed = received_packet.read_byte()?;
                                         if is_signed == 0x01 {
                                             received_packet.read_string()?;
                                         }
@@ -587,8 +581,7 @@ fn main() -> MainResult<()> {
         loop {
             let mut _input_command = String::new();
             io::stdin()
-                .read_line(&mut _input_command)
-                .expect("Couldn't read from console.");
+                .read_line(&mut _input_command)?;
 
             io::stdout().execute(cursor::MoveUp(1))?;
             io::stdout().execute(terminal::Clear(terminal::ClearType::CurrentLine))?;
@@ -630,7 +623,7 @@ fn main() -> MainResult<()> {
                     if let Some(command_type) = _input_command_split {
                         if command_type.0 == "s" {
                             let mut chat_message_array = Vec::new();
-                            chat_message_array.write_string(_input_command_split.unwrap().1)?;
+                            chat_message_array.write_string(command_type.1)?;
                             let chat_message = encode_packet(0x03, &chat_message_array)?;
                             stream.write_all(&chat_message)?;
                         }
