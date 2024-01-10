@@ -497,8 +497,10 @@ fn main() -> MainResult<()> {
                                     }
 
                                     print!("{}", message);
+                                    io::stdout().flush()?;
                                 }
                             }
+                            println!();
 
                             if let Some(x) = properties[0]["translate"].as_str()
                             {
